@@ -1,0 +1,22 @@
+{
+  "name": "ardubench",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A Betaflight-style setup app for ArduPilot quads",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node test/codec.test.mjs && node test/wizards.test.mjs && node test/vehicle.test.mjs",
+    "gen-defs": "python3 scripts/gen_defs.py > src/mavlink/defs.js"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "vite": "^5.4.21"
+  }
+}
