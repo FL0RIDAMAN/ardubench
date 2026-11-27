@@ -100,7 +100,7 @@ export default function App() {
 
           {connected || v.link ? (
             <button type="button" className="btn-disconnect" onClick={disconnect}>
-              Disconnect ({v.linkName})
+              <Icon name="disconnect" /> Disconnect ({v.linkName})
             </button>
           ) : (
             <div className="connect">
@@ -110,7 +110,7 @@ export default function App() {
                 <option value="virtual">Virtual (no hardware)</option>
               </select>
               <button type="button" className="btn-connect" onClick={connect} disabled={busy}>
-                <Icon name="plug" /> {busy ? 'Connecting…' : 'Connect'}
+                <Icon name="connect" /> {busy ? 'Connecting…' : 'Connect'}
               </button>
             </div>
           )}
