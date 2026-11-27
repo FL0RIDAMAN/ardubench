@@ -30,7 +30,7 @@ export default function StatusBar({ v, firmware }) {
 
   // Sensors: yellow = present (Betaflight's rule), red = present but ArduPilot
   // reports it unhealthy, grey = not fitted. GPS is also red until a 3D fix.
-  const sensor = (key, label, extra) => {
+  const sensor = (key, label, extra, badge) => {
     const bit = SENSOR[key];
     const present = (v.sensors.present & bit) !== 0;
     const healthy = (v.sensors.health & bit) !== 0;
@@ -39,7 +39,7 @@ export default function StatusBar({ v, firmware }) {
     if (extra) [state, note] = extra(present, healthy, state, note);
     return (
       <li key={key} title={`${label}: ${note}`}>
-        <span className={`sb-${state}`}><Icon name={key} size={16} /></span>
+        <span className={`sb-${state}`}><Icon name={key} size={16} />{badge != null && <span className="sb-badge" aria-hidden="true">{badge}</span>}</span>
         <span className="sr-only">{label}: {note}</span>
       </li>
     );
@@ -87,7 +87,7 @@ export default function StatusBar({ v, firmware }) {
             {sensor('accel', 'Accelerometer')}
             {sensor('mag', 'Compass')}
             {sensor('baro', 'Barometer')}
-            {sensor('gps', 'GPS', gpsRule)}
+            {sensor('gps', 'GPS', gpsRule, (v.sensors.present & SENSOR.gps) && v.gps ? v.gps.sats : null)}
             {sensor('rangefinder', 'Rangefinder')}
           </ul>
           <Sep />

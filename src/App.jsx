@@ -8,6 +8,7 @@ import Parameters from './tabs/Parameters.jsx';
 import Placeholder from './tabs/Placeholder.jsx';
 import Welcome from './tabs/Welcome.jsx';
 import StatusBar from './StatusBar.jsx';
+import SidebarFooter from './SidebarFooter.jsx';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: 'setup' },
@@ -124,6 +125,7 @@ export default function App() {
               </button>
             ))}
           </div>
+          <SidebarFooter v={v} firmware={fw ? fw.text : null} />
         </nav>
 
         <main className="main">

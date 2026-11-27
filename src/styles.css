@@ -1,19 +1,100 @@
 /* Betaflight-familiar look: dark background, yellow accent, pill panel labels. */
 :root {
-  --bg: #141414;
-  --bg2: #1c1c1c;
-  --line: #3a3a3a;
-  --text: #e4e4e4;
-  --muted: #9a9a9a;
-  --yellow: #ffbb00;
-  --yellow-dim: #2e260f;
-  --red: #ff5c6c;
   --mono: 'Roboto Mono', ui-monospace, monospace;
   /* Betaflight Configurator 2026.6.2: --ui-radius 0.35rem; Nuxt UI uses
      radius-md = 1.5x for controls and radius-lg = 2x for panels. */
   --radius-ctl: 8.4px;
   --radius-box: 11.2px;
+  --yellow: #ffbb00; /* fills: pills, buttons, toggles, borders */
+  --ok: #59aa29;
+
+  /* Dark theme (default). */
+  color-scheme: dark;
+  --bg: #141414;
+  --bg2: #1c1c1c;
+  --hover: #1f1f1f;
+  --line: #3a3a3a;
   --line-ctl: #404040; /* Nuxt UI ring-accented (neutral-700) */
+  --text: #e4e4e4;
+  --text-soft: #cfcfcf;
+  --muted: #9a9a9a;
+  --muted-2: #7e7e7e;
+  --icon-off: #a3a3a3;
+  --yellow-fg: #ffbb00; /* yellow used as text or icon colour */
+  --yellow-dim: #2e260f;
+  --red: #ff5c6c;
+  --red-solid: #fb2c36;
+  --statusbar: #242424;
+  --savebar: #1a1a1a;
+  --bar-line: #2e2e2e;
+  --choice: #262626;
+  --valbox: #404040;
+  --valbox-line: #4a4a4a;
+  --track: #3d3d3d;
+  --stats: #bdbdbd;
+  --help: #8c8c8c;
+  --help-open: #5a5a5a;
+  --tag-ap: #6e6e6e;
+  --dialog-line: #595959;
+  --backdrop: rgba(0, 0, 0, 0.88);
+  --shadow: rgba(0, 0, 0, 0.6);
+  --connect-bg: #143a1d;
+  --connect-fg: #6fdc8c;
+  --danger-bg: #3a1616;
+  --danger-line: #6a2a2a;
+  --danger-fg: #ffb3bb;
+  --log-line: #3a2020;
+  --changed-row: #1c1810;
+  --row-line: #262626;
+  --virtual-bg: #101a24;
+  --virtual-line: #24476b;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23bdbdbd' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+/* Light theme: Betaflight's light surfaces (theme.css: surface-100 98%,
+   surface-200 95%, surface-300 92%, surface-400 84%, black text). Yellow
+   text and icons use a darker amber so they stay readable on white. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fafafa;
+  --bg2: #f2f2f2;
+  --hover: #ebebeb;
+  --line: #d6d6d6;
+  --line-ctl: #bfbfbf;
+  --text: #141414;
+  --text-soft: #333333;
+  --muted: #5c5c5c;
+  --muted-2: #6b6b6b;
+  --icon-off: #8c8c8c;
+  --yellow-fg: #946200;
+  --yellow-dim: #fff1c2;
+  --red: #c10f36;
+  --red-solid: #e2123f;
+  --statusbar: #ebebeb;
+  --savebar: #f2f2f2;
+  --bar-line: #d6d6d6;
+  --choice: #ebebeb;
+  --valbox: #d6d6d6;
+  --valbox-line: #bfbfbf;
+  --track: #d6d6d6;
+  --stats: #4d4d4d;
+  --help: #737373;
+  --help-open: #8c8c8c;
+  --tag-ap: #a6a6a6;
+  --dialog-line: #a6a6a6;
+  --backdrop: rgba(0, 0, 0, 0.45);
+  --shadow: rgba(0, 0, 0, 0.18);
+  --connect-bg: #dcf5e3;
+  --connect-fg: #1d6b34;
+  --danger-bg: #fde3e8;
+  --danger-line: #f3a6b4;
+  --danger-fg: #a10d2d;
+  --log-line: #f0c9cf;
+  --changed-row: #fff6db;
+  --row-line: #e6e6e6;
+  --virtual-bg: #e8f1fb;
+  --virtual-line: #8fb4dc;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23666666' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
@@ -24,14 +105,14 @@ button, select, input { font-family: inherit; font-size: inherit; color: inherit
 select {
   appearance: none; -webkit-appearance: none; cursor: pointer;
   padding-right: 36px !important;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5 6 7.5 9 4.5' fill='none' stroke='%23bdbdbd' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-image: var(--chevron);
   background-repeat: no-repeat; background-position: right 12px center; background-size: 12px 12px;
 }
 select option { background-color: var(--bg2); color: var(--text); }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.45; }
-a { color: var(--yellow); }
-:focus-visible { outline: 2px solid var(--yellow); outline-offset: 2px; }
+a { color: var(--yellow-fg); }
+:focus-visible { outline: 2px solid var(--yellow-fg); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .mono { font-family: var(--mono); }
 .muted { color: var(--muted); }
@@ -42,24 +123,36 @@ a { color: var(--yellow); }
 .body { display: flex; flex: 1; min-height: 0; flex-wrap: wrap; }
 
 /* sidebar */
-.sidebar { flex: 0 0 250px; padding: 22px 16px; display: flex; flex-direction: column; gap: 6px; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 6px 12px 20px; font-weight: 700; font-style: italic; font-size: 21px; color: var(--yellow); letter-spacing: 0.02em; }
+.sidebar { flex: 0 0 250px; padding: 22px 16px 12px; display: flex; flex-direction: column; gap: 6px; }
+/* On wide screens the sidebar stays in view (like Betaflight's) so its footer
+   is always at the bottom-left, above the status bar. */
+@media (min-width: 900px) {
+  .sidebar { position: sticky; top: 0; align-self: flex-start; height: calc(100vh - 40px); overflow-y: auto; }
+}
+/* Sidebar footer: small icon-only buttons (Betaflight: ghost, neutral, xs, square). */
+.sidebar-footer { display: flex; gap: 4px; align-items: center; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--line); }
+.icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 0; border-radius: var(--radius-ctl); background: none; color: var(--text-soft); }
+.icon-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.log-list { list-style: none; margin: 0; padding: 0; max-height: 50vh; overflow-y: auto; font-size: 14px; line-height: 1.6; }
+.log-list .bad { color: var(--red); }
+.log-list .warn { color: var(--yellow-fg); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 6px 12px 20px; font-weight: 700; font-style: italic; font-size: 21px; color: var(--yellow-fg); letter-spacing: 0.02em; }
 .brand em { color: var(--text); font-style: italic; }
 .connect { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .connect select { background-color: var(--bg2); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); padding: 5px 10px; font-size: 14px; line-height: 20px; }
-.btn-connect { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: var(--radius-ctl); background: #143a1d; color: #6fdc8c; font-weight: 600; }
-.btn-disconnect { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: var(--radius-ctl); background: #3a1616; color: var(--red); margin-bottom: 14px; }
+.btn-connect { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: var(--radius-ctl); background: var(--connect-bg); color: var(--connect-fg); font-weight: 600; }
+.btn-disconnect { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 0; border-radius: var(--radius-ctl); background: var(--danger-bg); color: var(--red); margin-bottom: 14px; }
 .tabs { display: flex; flex-direction: column; gap: 2px; }
-.tab { display: flex; align-items: center; gap: 14px; padding: 9px 14px; border: 0; border-radius: var(--radius-ctl); background: none; color: #cfcfcf; font-size: 17px; text-align: left; }
-.tab:hover { background: #1f1f1f; }
-.tab.active { background: var(--yellow-dim); color: var(--yellow); }
+.tab { display: flex; align-items: center; gap: 14px; padding: 9px 14px; border: 0; border-radius: var(--radius-ctl); background: none; color: var(--text-soft); font-size: 17px; text-align: left; }
+.tab:hover { background: var(--hover); }
+.tab.active { background: var(--yellow-dim); color: var(--yellow-fg); }
 
 .main { flex: 1 1 600px; min-width: 0; padding: 26px 30px 24px 20px; }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; border-bottom: 2px solid var(--yellow); padding-bottom: 4px; margin-bottom: 24px; }
 .page-title { margin: 0; font-size: 40px; font-weight: 300; }
 h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); padding-bottom: 8px; margin-bottom: 26px; }
 .wiki { background: var(--yellow); color: #111; font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 6px; text-decoration: none; }
-.error { background: #3a1616; border: 1px solid #6a2a2a; color: #ffb3bb; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
+.error { background: var(--danger-bg); border: 1px solid var(--danger-line); color: var(--danger-fg); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; }
 
 .cols { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
 .col { flex: 1 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 28px; }
@@ -76,7 +169,7 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .btn-yellow { background: var(--yellow); color: #111; }
 .btn-yellow.small { min-height: 28px; padding: 0 8px; font-size: 12px; }
 .btn-grey { background: var(--line); color: var(--text); }
-.btn-red { background: #d9242f; color: #fff; }
+.btn-red { background: #d9242f; color: #fff; } /* same in both themes */
 
 /* toggles */
 .toggle { width: 36px; height: 20px; border-radius: 10px; border: 0; padding: 0; background: var(--line-ctl); position: relative; flex: none; }
@@ -86,7 +179,7 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 
 .tag { flex: none; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; padding: 1px 6px; border-radius: 4px; }
 .tag-bf { background: var(--yellow); color: #111; }
-.tag-ap { border: 1px solid #6e6e6e; color: var(--muted); }
+.tag-ap { border: 1px solid var(--tag-ap); color: var(--muted); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); margin-left: 6px; }
 
 /* setting rows */
@@ -96,18 +189,18 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .row-text { flex: 1; min-width: 0; }
 .row-label { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14px; }
 .row-param { font-family: var(--mono); font-size: 11px; color: var(--muted); margin-top: 2px; }
-.row-param span { font-family: 'Open Sans', sans-serif; color: #7e7e7e; }
-.qual { font-size: 12px; color: var(--yellow); }
+.row-param span { font-family: 'Open Sans', sans-serif; color: var(--muted-2); }
+.qual { font-size: 12px; color: var(--yellow-fg); }
 .row select, .mixer-select select, .numfield { background-color: var(--bg); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); font-size: 14px; line-height: 20px; }
 .row select { padding: 5px 10px; width: 140px; }
 /* Number fields with Betaflight-style yellow up/down chevrons (NumberInput). */
 .numfield { display: inline-flex; align-items: stretch; overflow: hidden; }
-.numfield:focus-within { border-color: var(--yellow); }
+.numfield:focus-within { border-color: var(--yellow-fg); }
 .numfield input { flex: 1; min-width: 0; width: 100%; background: none; border: 0; padding: 4px 4px 4px 10px; outline: none; }
 .numfield.mono input { font-family: var(--mono); padding-top: 5px; padding-bottom: 5px; }
 .numfield .suffix { align-self: center; padding-right: 4px; }
 .numfield .steps { display: flex; flex-direction: column; width: 24px; flex: none; }
-.numfield .steps button { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 0 0 0; border: 0; background: none; color: var(--yellow); cursor: pointer; touch-action: none; }
+.numfield .steps button { flex: 1; display: flex; align-items: center; justify-content: center; padding: 0 0 0 0; border: 0; background: none; color: var(--yellow-fg); cursor: pointer; touch-action: none; }
 .numfield .steps button:hover { background: var(--yellow-dim); }
 .numfield .steps svg { width: 12px; height: 12px; }
 .suffix { color: var(--muted); font-size: 13px; }
@@ -118,12 +211,12 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 
 /* help popovers */
 .help { position: relative; flex: none; display: inline-flex; }
-.help-q { width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 11px; font-weight: 600; background: transparent; border: 1.5px solid #8c8c8c; color: #8c8c8c; }
-.help-q.open { background: #5a5a5a; border-color: #5a5a5a; color: #fff; }
-.help-pop { position: absolute; right: 34px; top: -10px; width: 460px; max-width: 80vw; z-index: 30; background: var(--bg); border: 2px solid var(--yellow); border-radius: 6px; padding: 14px 16px 4px; font-size: 14px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6); }
+.help-q { width: 20px; height: 20px; padding: 0; border-radius: 50%; font-size: 11px; font-weight: 600; background: transparent; border: 1.5px solid var(--help); color: var(--help); }
+.help-q.open { background: var(--help-open); border-color: var(--help-open); color: #fff; }
+.help-pop { position: absolute; right: 34px; top: -10px; width: 460px; max-width: 80vw; z-index: 30; background: var(--bg); border: 2px solid var(--yellow); border-radius: 6px; padding: 14px 16px 4px; font-size: 14px; line-height: 1.5; box-shadow: 0 8px 24px var(--shadow); }
 .help-pop.up { top: auto; bottom: -10px; }
 .help-pop p { margin: 0 0 10px; }
-.help-title { color: var(--yellow); font-weight: 700; margin-bottom: 8px; }
+.help-title { color: var(--yellow-fg); font-weight: 700; margin-bottom: 8px; }
 
 /* quad diagram */
 .quad { position: relative; width: 300px; height: 280px; margin: 16px auto 4px; }
@@ -137,19 +230,19 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
    even Motor order's quarter-second spurts are easy to spot. */
 .motor-btn.bench-spinning { background: #ff7a45; border-color: #fff; color: #111; }
 .btns.center-row { justify-content: center; }
-.virtual-drone { float: right; width: 150px; margin: 0 0 8px 12px; padding: 8px; border: 1px dashed #24476b; border-radius: 8px; background: #101a24; text-align: center; }
+.virtual-drone { float: right; width: 150px; margin: 0 0 8px 12px; padding: 8px; border: 1px dashed var(--virtual-line); border-radius: 8px; background: var(--virtual-bg); text-align: center; }
 .virtual-drone p { margin: 4px 0 0; line-height: 1.35; }
 .quad.quad-small { width: 300px; height: 280px; margin: -70px -75px; transform: scale(0.5); pointer-events: none; }
 .quad-small .motor-btn { display: block; }
 
 /* Motor order / Motor direction dialogs (Betaflight Configurator's tools) */
-.bf-dialog { width: min(720px, 92vw); max-height: 92vh; overflow: auto; box-sizing: border-box; background: var(--bg); color: var(--text); border: 2px solid #595959; border-radius: 3px; padding: 20px; }
-.bf-dialog::backdrop { background: rgba(0, 0, 0, 0.88); }
+.bf-dialog { width: min(720px, 92vw); max-height: 92vh; overflow: auto; box-sizing: border-box; background: var(--bg); color: var(--text); border: 2px solid var(--dialog-line); border-radius: 3px; padding: 20px; }
+.bf-dialog::backdrop { background: var(--backdrop); }
 .bf-dialog h3 { margin: 0 0 16px; font-size: 21px; font-weight: 600; }
 .bf-dialog .quad { margin-top: 24px; }
 .neg { color: var(--red); }
 .dialog-safety { line-height: 1.6; margin-bottom: 14px; }
-.dialog-info { color: #cfcfcf; font-size: 14px; line-height: 1.55; margin: 14px 0; }
+.dialog-info { color: var(--text-soft); font-size: 14px; line-height: 1.55; margin: 14px 0; }
 .dialog-hint { margin: 10px 0 4px; font-size: 16px; font-weight: 600; text-align: center; }
 .dialog-hint.muted { font-size: 14px; font-weight: 400; }
 .dialog-start { display: flex; flex-wrap: wrap; gap: 18px; margin: 8px 0; }
@@ -159,17 +252,17 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .btns.right-end { justify-content: flex-end; }
 .btns .spacer { flex: 1; }
 .motor-choice { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 12px 0; }
-.choice { min-width: 64px; min-height: 52px; padding: 6px 14px; border: 2px solid var(--line-ctl); border-radius: var(--radius-ctl); background: #262626; color: var(--text); font-size: 18px; font-weight: 700; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; }
+.choice { min-width: 64px; min-height: 52px; padding: 6px 14px; border: 2px solid var(--line-ctl); border-radius: var(--radius-ctl); background: var(--choice); color: var(--text); font-size: 18px; font-weight: 700; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; }
 .choice small { font-size: 11px; font-weight: 600; color: var(--muted); }
-.choice.on { border-color: var(--yellow); background: var(--yellow-dim); color: var(--yellow); }
-.choice.on small { color: var(--yellow); }
+.choice.on { border-color: var(--yellow); background: var(--yellow-dim); color: var(--yellow-fg); }
+.choice.on small { color: var(--yellow-fg); }
 .choice.live { box-shadow: 0 0 0 3px rgba(255, 187, 0, 0.6); }
 .motor-num { font-size: 22px; font-weight: 700; line-height: 1; }
 .motor-bf { font-size: 10px; color: #8a5a00; font-weight: 700; line-height: 1.2; }
 .motor-letter { font-size: 9px; font-weight: 600; line-height: 1.3; }
 /* Spin-direction arrows: yellow like Betaflight; CCW is the CW drawing mirrored. */
 .quad .spin-arrows { position: absolute; inset: auto; left: -18px; top: -18px; width: 96px; height: 96px; overflow: visible; pointer-events: none; }
-.spin-arrows { color: var(--yellow); }
+.spin-arrows { color: var(--yellow-fg); }
 .spin-arrows path { fill: none; stroke: currentColor; stroke-width: 4; stroke-linecap: round; }
 .spin-arrows polygon { fill: currentColor; }
 .spin-arrows.ccw { transform: scaleX(-1); }
@@ -180,7 +273,7 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .note { color: var(--muted); }
-.preview-note { color: var(--yellow); margin: 4px 0; }
+.preview-note { color: var(--yellow-fg); margin: 4px 0; }
 
 /* graph */
 .graph { display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 18px; }
@@ -196,16 +289,16 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .sliders { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; text-align: center; }
 .slider-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .slider-head { background: none; border: 0; font-size: 17px; min-height: 26px; display: flex; align-items: center; gap: 4px; }
-.slider-head small { color: var(--yellow); font-size: 11px; }
+.slider-head small { color: var(--yellow-fg); font-size: 11px; }
 /* Like Betaflight's motor value boxes: fills with orange from the bottom as
    throttle rises (Motors.jsx sets --fill and --fill-alpha). */
 .valbox {
   width: 100%; height: 110px; border-radius: var(--radius-ctl); display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 700; border: 1px solid #4a4a4a;
-  background: linear-gradient(to top, rgba(255, 105, 0, var(--fill-alpha, 0.1)) var(--fill, 0%), #404040 var(--fill, 0%));
+  font-size: 12px; font-weight: 700; border: 1px solid var(--valbox-line);
+  background: linear-gradient(to top, rgba(255, 105, 0, var(--fill-alpha, 0.1)) var(--fill, 0%), var(--valbox) var(--fill, 0%));
 }
 .valbox.sel { border-color: var(--yellow); }
-.stats { font-size: 12px; line-height: 1.6; color: #bdbdbd; min-height: 58px; }
+.stats { font-size: 12px; line-height: 1.6; color: var(--stats); min-height: 58px; }
 /* Vertical sliders like Betaflight's: thin rounded track, hollow yellow ring handle. */
 .vslider { -webkit-appearance: none; appearance: none; writing-mode: vertical-lr; direction: rtl; height: 100px; width: 24px; background: transparent; cursor: pointer; }
 .vslider::-webkit-slider-runnable-track { width: 8px; border-radius: 999px; background: var(--line-ctl); }
@@ -221,40 +314,42 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .notice-warn { color: var(--red); font-weight: 600; margin: 10px 0; }
 .notice ul { margin: 0 0 14px; padding-left: 20px; line-height: 1.6; }
 .notice-toggle { display: flex; align-items: center; gap: 12px; font-size: 14px; }
-.log { margin-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--muted); border-top: 1px solid #3a2020; padding-top: 8px; }
+.log { margin-top: 12px; font-family: var(--mono); font-size: 12px; color: var(--muted); border-top: 1px solid var(--log-line); padding-top: 8px; }
 .log .bad { color: var(--red); }
 
 /* bottom bars */
-.savebar { position: sticky; bottom: 40px; z-index: 20; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding: 10px 30px; background: #1a1a1a; border-top: 1px solid #2e2e2e; }
+.savebar { position: sticky; bottom: 40px; z-index: 20; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px; padding: 10px 30px; background: var(--savebar); border-top: 1px solid var(--bar-line); }
 .savebar-list { flex: 1 1 100%; margin: 0; padding: 0; list-style: none; font-size: 14px; line-height: 1.6; }
 /* Status bar, like Betaflight Configurator's (StatusBar.vue: 2.5rem tall,
    surface-300 background, 0.6rem gaps; icons yellow when on, muted when off). */
-.statusbar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 0.6rem; height: 40px; padding: 4px 16px; background: #242424; white-space: nowrap; overflow-x: auto; scrollbar-width: none; font-size: 14px; color: var(--text); }
-.statusbar .warn { color: var(--yellow); font-weight: 600; }
+.statusbar { position: sticky; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 0.6rem; height: 40px; padding: 4px 16px; background: var(--statusbar); white-space: nowrap; overflow-x: auto; scrollbar-width: none; font-size: 14px; color: var(--text); }
+.statusbar .warn { color: var(--yellow-fg); font-weight: 600; }
 .sb-sep { width: 1px; align-self: stretch; margin: 4px 0; background: var(--line-ctl); flex: none; }
 .sb-group { display: inline-flex; align-items: center; gap: 0.4rem; }
 .sb-group svg, .sb-sensors svg { display: block; }
 .sb-stat-icon { display: inline-flex; opacity: 0.75; }
 .sb-value { font-variant-numeric: tabular-nums; }
-.sb-on { color: var(--yellow); display: inline-flex; }
-.sb-off { color: #a3a3a3; display: inline-flex; }
-.sb-bad { color: #fb2c36; display: inline-flex; }
+.sb-on { color: var(--yellow-fg); display: inline-flex; }
+.sb-off { color: var(--icon-off); display: inline-flex; }
+.sb-bad { color: var(--red-solid); display: inline-flex; }
 .sb-sensors { display: flex; gap: 16px; margin: 0; padding: 0; list-style: none; }
 .sb-sensors li { display: inline-flex; }
+/* Satellite count tucked against the GPS icon, in the icon's colour. */
+.sb-badge { font-size: 10px; font-weight: 700; line-height: 1; margin: 9px 0 0 1px; font-variant-numeric: tabular-nums; }
 .sb-icons { gap: 12px; }
-.sb-cpu { position: relative; display: inline-block; width: 60px; height: 8px; border-radius: 3px; background: #3d3d3d; overflow: hidden; }
+.sb-cpu { position: relative; display: inline-block; width: 60px; height: 8px; border-radius: 3px; background: var(--track); overflow: hidden; }
 .sb-cpu > span { display: block; height: 100%; border-radius: 3px 0 0 3px; transition: width 0.2s ease; }
-.sb-cpu--ok > span { background: #59aa29; }
+.sb-cpu--ok > span { background: var(--ok); }
 .sb-cpu--warning > span { background: #ff6900; }
-.sb-cpu--critical > span { background: #fb2c36; }
+.sb-cpu--critical > span { background: var(--red-solid); }
 /* Battery icon like Betaflight's BatteryIcon.vue: green when fine, flashing red when low. */
-.sb-battery { position: relative; display: inline-block; width: 31px; height: 15px; border: 2px solid #a3a3a3; border-radius: 3px; padding: 1px; box-sizing: border-box; margin-right: 4px; }
-.sb-battery::after { content: ''; position: absolute; right: -5px; top: 3px; width: 3px; height: 5px; border-radius: 0 2px 2px 0; background: #a3a3a3; }
+.sb-battery { position: relative; display: inline-block; width: 31px; height: 15px; border: 2px solid var(--icon-off); border-radius: 3px; padding: 1px; box-sizing: border-box; margin-right: 4px; }
+.sb-battery::after { content: ''; position: absolute; right: -5px; top: 3px; width: 3px; height: 5px; border-radius: 0 2px 2px 0; background: var(--icon-off); }
 .sb-battery > span { display: block; height: 100%; border-radius: 1px; }
-.sb-battery--ok > span { background: #59aa29; }
-.sb-battery--empty > span, .sb-battery--warning > span { background: #fb2c36; animation: sb-blink 1s linear infinite; }
+.sb-battery--ok > span { background: var(--ok); }
+.sb-battery--empty > span, .sb-battery--warning > span { background: var(--red-solid); animation: sb-blink 1s linear infinite; }
 @keyframes sb-blink { 50% { background: transparent; } }
-.sb-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.6rem; font-size: 12px; color: #a3a3a3; }
+.sb-right { margin-left: auto; display: inline-flex; align-items: center; gap: 0.6rem; font-size: 12px; color: var(--icon-off); }
 
 /* welcome + loading */
 .welcome-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px; }
@@ -267,7 +362,7 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .param-tools input[type=search] { flex: 1 1 320px; background: var(--bg2); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); padding: 5px 10px; font-size: 14px; line-height: 20px; }
 .check { display: flex; gap: 8px; align-items: center; }
 .param-table { padding: 10px 16px; }
-.prow { display: grid; grid-template-columns: minmax(200px, 1fr) 170px minmax(0, 1.4fr); gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid #262626; }
+.prow { display: grid; grid-template-columns: minmax(200px, 1fr) 170px minmax(0, 1.4fr); gap: 12px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--row-line); }
 .prow.phead { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
-.prow.changed { background: #1c1810; }
+.prow.changed { background: var(--changed-row); }
 
