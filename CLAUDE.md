@@ -14,10 +14,11 @@ web first, maybe wrapped as a desktop app later.
 ## Architecture (see README.md for more)
 link (`SerialLink` / `VirtualLink`) → `mavlink/codec.js` → `vehicle.js` (state + setParam/motorTest/command/reboot) → React screens (`App.jsx`, `tabs/`).
 - `VirtualLink` is a fake ArduCopter speaking real MAVLink bytes. It's a correctly built QUAD X (FRAME_TYPE 1); never ship it broken. Tests pass their own `wiring` to simulate a mis-soldered quad. New features should work in Virtual mode too.
+- `ports.js` (Ports tab data + warnings), `compass.js` (compass table, device ids, rotations), `useRates.js` (stream live messages only while a tab is open). Ports, Compass and Accel & Level follow Betaflight's layout and Mission Planner's ArduPilot behaviour (`ConfigSerial.cs`, `ConfigHWCompass2.cs`, `ConfigAccelerometerCalibration.cs`).
 - `frames.js`: motor positions and numbers per FRAME_TYPE (1 = X, 12 = BetaFlightX, 18 = BetaFlightXReversed). Test order A–D runs clockwise from front-right.
 - `wizards.js`: pure functions (order → SERVOn_FUNCTION, direction → SERVO_BLH_RVMASK). Keep logic out of the components so it stays testable.
 - Motor order / Motor direction are dialogs (`tabs/MotorOrderDialog.jsx`, `tabs/MotorDirectionDialog.jsx`) modeled on Betaflight Configurator 2026.6.2's Reorder motors and Motor direction dialogs. Match Betaflight's flow; where ArduPilot can't (motor direction only applies after a reboot), say so in the UI and README. Check ArduPilot's source before claiming a limitation.
-- `npm test` includes `test/bench.test.mjs`: for every frame, on both the correct virtual quad and a mis-soldered one, Motor order and Motor direction (same math as the dialogs) must leave every slider spinning its own motor the right way, and change nothing when nothing is wrong.
+- `npm test` includes `test/setup.test.mjs` (ports, MAVFTP, compass and accel calibrations against the Virtual FC) and `test/bench.test.mjs`: for every frame, on both the correct virtual quad and a mis-soldered one, Motor order and Motor direction (same math as the dialogs) must leave every slider spinning its own motor the right way, and change nothing when nothing is wrong.
 - Edits are staged as "pending" in App.jsx, written with Write to FC, then Reboot FC.
 
 ## Rules
@@ -35,6 +36,6 @@ link (`SerialLink` / `VirtualLink`) → `mavlink/codec.js` → `vehicle.js` (sta
 - Don't say "usually"/"often" without a source; say it's a guess.
 
 ## Status
-Milestone 1 done: connect, params, Motors tab, Parameters tab. Tested against the Virtual FC only.
-Next up: verify on a real FC (README checklist), then Receiver, Compass, Accel, Power & Failsafe, Harmonic Notch, Fleet baseline diff, QC checklist tabs.
+Milestone 1 done: connect, params, Motors tab, Parameters tab. Then Ports, Compass, Accel & Level tabs. Tested against the Virtual FC only.
+Next up: verify on a real FC (README checklist), then Receiver, Power & Failsafe, Harmonic Notch, Fleet baseline diff, QC checklist tabs.
 Design mockups: https://claude.ai/artifact/FUqwi9mjvXewxUNNR7Trjf

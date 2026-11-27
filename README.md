@@ -6,9 +6,11 @@ flight controller over USB.
 
 **Open it: https://fl0ridaman.github.io/ardubench/** (Chrome or Edge on a computer)
 
-**Milestone 1 (this version):** connect, read/write parameters, and a working
+**Milestone 1:** connect, read/write parameters, and a working
 Motors tab with motor test, a motor order wizard, a motor direction wizard,
 ESC telemetry, and Betaflight equivalents for every setting.
+
+**Now also:** Ports, Compass, and Accel & Level tabs (below).
 
 ## Try it
 
@@ -99,6 +101,45 @@ works the same way).
 Other changes on the Motors tab are collected at the bottom as **unsaved
 changes**, written with **Write to FC**, and most need **Reboot FC** to take effect.
 
+## Ports, Compass, Accel & Level
+
+Each copies Betaflight Configurator 2026.6.2's layout where Betaflight has the
+same thing, and Mission Planner's behaviour where only ArduPilot does. Every
+change goes through the same unsaved-changes list, **Write to FC** and
+**Reboot FC** as the Motors tab.
+
+- **Ports** (`tabs/Ports.jsx`, data in `ports.js`): Betaflight's grid
+  (`PortsTab.vue`): Identifier, Configuration/MAVLink, Serial Rx, Telemetry
+  Output, Sensor Input, Peripherals, plus Options (ArduPilot only). Below
+  1020 px it switches to one card per port, as Betaflight does. ArduPilot gives
+  each port one protocol (`SERIALn_PROTOCOL`), so picking something in one
+  column turns the others off. Port names (UART7, USB…) come from the board's
+  `@SYS/uarts.txt`, read over MAVFTP like Mission Planner's serial page
+  (`ConfigSerial.cs`). Like Mission Planner, setting a port to MAVLink clears
+  its options, and MAVLink1 also sets 115200. Warnings come from ArduPilot's
+  own checks: two receiver ports, retired option bits 10/12, ESC telemetry or
+  SmartAudio/Tramp on more than one port, VTX_ENABLE, OSD_TYPE for
+  DisplayPort, GPS on more than 2 ports, too many MAVLink ports.
+- **Compass** (`tabs/Compass.jsx`, data in `compass.js`): Mission Planner's
+  compass table (`ConfigHWCompass2.cs`): compasses in priority order with ↑/↓
+  (rewrites `COMPASS_PRIO1..3_ID`), Missing and Remove Missing, and onboard
+  calibration started the same way (all compasses, retry, autosave). From
+  Betaflight's Magnetometer panel: Magnetometer Alignment (external compasses
+  only; internal ones follow Board Alignment), declination, and a heading
+  check with each compass's field strength.
+- **Accel & Level** (`tabs/Level.jsx`): Betaflight's Board Alignment
+  (`AHRS_ORIENTATION`), Calibrate (ArduPilot's Simple Accel Cal) and roll/pitch
+  trims (`AHRS_TRIM_X/Y`, shown in degrees). Mission Planner's 6-position
+  **Calibrate Accel** (the one the ArduPilot wiki calls mandatory) and
+  **Calibrate Level**. The 6-position dialog draws the position the FC asks
+  for. ArduPilot has no command to stop it part-way; a reboot does.
+- Live data (heading, field, attitude) is requested only while a tab is open
+  (`useRates.js`), then handed back to the FC's own rates.
+
+The Virtual FC does all of this too: MAVFTP for `uarts.txt`, live attitude and
+compass data, and all three calibrations, answering the way ArduPilot's code
+does (`test/setup.test.mjs`).
+
 ## Checked against ArduPilot's source
 
 From ArduPilot's code on GitHub (master branch), not yet on hardware:
@@ -114,6 +155,19 @@ From ArduPilot's code on GitHub (master branch), not yet on hardware:
   the reversed mask is only sent to the ESCs in `AP_BLHeli::init`.
 - During a motor test only the commanded motor's output is rewritten, so
   several motors can spin at once (`ArduCopter/motors.cpp`, `motor_test.cpp`).
+- Ports: protocol and baud lists, `map_baudrate`, and which protocols ignore
+  `SERIALn_BAUD` (`AP_SerialManager.cpp`, `AP_RCProtocol.cpp`, `AP_BLHeli.cpp`);
+  `uarts.txt` format (`AP_HAL_ChibiOS/Util.cpp`); MAVFTP read
+  (`GCS_MAVLink/GCS_FTP.cpp`).
+- Compass: `COMPASS_USEn` belongs to the priority slot, offsets and
+  orientation to the storage slot, and ArduPilot reorders storage to match
+  priority at boot (`AP_Compass.cpp`); calibration start/accept/cancel results
+  (`AP_Compass_Calibration.cpp`); the 185–875 mGauss pre-arm limits
+  (`AP_Arming.cpp`).
+- Accel: level and simple calibrations are refused within 5 s of the last one;
+  only the 6-position one needs a reboot; a finished 6-position calibration
+  keeps reporting SUCCESS/FAILED once a second; it is only cancelled by arming
+  (`AP_InertialSensor.cpp`, `AP_AccelCal.cpp`, `GCS_Common.cpp`).
 
 ## Things to verify on a real flight controller
 
@@ -136,3 +190,19 @@ Built and tested against the Virtual FC only. On the bench, check:
    rangefinder); GPS turns yellow at a 3D fix; the shield lights during a
    failsafe; the log count and size match the logs on the SD card.
 9. Help text: check against the ArduPilot parameter docs.
+10. Ports: `@SYS/uarts.txt` downloads over MAVFTP and the UART names match the
+    board's pinout; protocol and baud changes take effect after the reboot.
+    `SERIALn_BAUD` has no "reboot required" tag in ArduPilot, but ports are
+    opened at startup, so the app treats it as needing one.
+11. Compass: `MAG_CAL_PROGRESS` / `MAG_CAL_REPORT` arrive once requested
+    (`SET_MESSAGE_INTERVAL`); the progress bars fill; after autosave the app's
+    accept stops the reports; on 4.7.x with retry on, a failed attempt just
+    restarts (the attempt count goes up) instead of reporting a failure.
+    Failure statuses 8–10 exist only on newer firmware. `RAW_IMU` /
+    `SCALED_IMU2` show compasses 1 and 2.
+12. Accel: the FC's position requests (`COMMAND_LONG` 42429 sent to system 0)
+    reach the app over USB; each Done advances; Calibrate Level gives "Trim
+    OK". `AHRS_ORIENTATION`: its description says "next boot" but the code
+    seems to apply it at once; the app asks for a reboot either way.
+13. The ArduPilot wiki lists SERIAL1/2's default protocol as MAVLink1; the code
+    says MAVLink2. Doesn't change the app, but worth knowing.

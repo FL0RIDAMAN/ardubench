@@ -5,6 +5,9 @@ import { VirtualLink } from './link/VirtualLink.js';
 import { Icon } from './components.jsx';
 import Motors from './tabs/Motors.jsx';
 import Parameters from './tabs/Parameters.jsx';
+import Ports from './tabs/Ports.jsx';
+import Compass from './tabs/Compass.jsx';
+import Level from './tabs/Level.jsx';
 import Placeholder from './tabs/Placeholder.jsx';
 import Welcome from './tabs/Welcome.jsx';
 import StatusBar from './StatusBar.jsx';
@@ -12,6 +15,7 @@ import SidebarFooter from './SidebarFooter.jsx';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: 'setup' },
+  { id: 'ports', label: 'Ports', icon: 'ports' },
   { id: 'motors', label: 'Motors', icon: 'motors' },
   { id: 'receiver', label: 'Receiver', icon: 'receiver' },
   { id: 'compass', label: 'Compass', icon: 'compass' },
@@ -142,6 +146,12 @@ export default function App() {
             <Motors stage={stage} value={value} pending={pending} />
           ) : tab === 'params' ? (
             <Parameters stage={stage} value={value} pending={pending} />
+          ) : tab === 'ports' ? (
+            <Ports stage={stage} value={value} pending={pending} />
+          ) : tab === 'compass' ? (
+            <Compass stage={stage} value={value} pending={pending} />
+          ) : tab === 'level' ? (
+            <Level stage={stage} value={value} pending={pending} />
           ) : (
             <Placeholder title={TABS.find((t) => t.id === tab).label} />
           )}

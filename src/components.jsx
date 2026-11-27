@@ -99,6 +99,21 @@ export function Toggle({ checked, onChange, disabled, label }) {
   );
 }
 
+// One setting: control on the left, then the label (Betaflight name with a BF
+// tag, or an "AP only" tag), the ArduPilot parameter underneath, and the "?".
+export function Row({ kind = 'bf', label, qual, param, note, help, up, changed, children }) {
+  return (
+    <div className="row">
+      <div className="row-ctl">{children}</div>
+      <div className="row-text">
+        <div className="row-label"><Tag kind={kind} /><span>{label}</span>{qual && <span className="qual">{qual}</span>}{changed && <span className="dot" title="Not written yet" />}</div>
+        <div className="row-param">ArduPilot: {param}{note && <span> · {note}</span>}</div>
+      </div>
+      <Help id={help} up={up} />
+    </div>
+  );
+}
+
 export function Tag({ kind = 'bf' }) {
   return <span className={`tag tag-${kind}`}>{kind === 'bf' ? 'BF' : 'AP only'}</span>;
 }
@@ -141,6 +156,7 @@ export function Help({ id, up }) {
 // Each entry: list of [svg element, attributes].
 const ICONS = {
   setup: [["path",{"d":"M10 5H3"}],["path",{"d":"M12 19H3"}],["path",{"d":"M14 3v4"}],["path",{"d":"M16 17v4"}],["path",{"d":"M21 12h-9"}],["path",{"d":"M21 19h-5"}],["path",{"d":"M21 5h-7"}],["path",{"d":"M8 10v4"}],["path",{"d":"M8 12H3"}]], // lucide:sliders-horizontal
+  ports: [["path",{"d":"M17 19a1 1 0 0 1-1-1v-2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a1 1 0 0 1-1 1z"}],["path",{"d":"M17 21v-2"}],["path",{"d":"M19 14V6.5a1 1 0 0 0-7 0v11a1 1 0 0 1-7 0V10"}],["path",{"d":"M21 21v-2"}],["path",{"d":"M3 5V3"}],["path",{"d":"M4 10a2 2 0 0 1-2-2V6a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2a2 2 0 0 1-2 2z"}],["path",{"d":"M7 5V3"}]], // lucide:cable (Betaflight's Ports icon)
   motors: [["path",{"d":"M10.827 16.379a6.082 6.082 0 0 1-8.618-7.002l5.412 1.45a6.082 6.082 0 0 1 7.002-8.618l-1.45 5.412a6.082 6.082 0 0 1 8.618 7.002l-5.412-1.45a6.082 6.082 0 0 1-7.002 8.618l1.45-5.412Z"}],["path",{"d":"M12 12v.01"}]], // lucide:fan
   receiver: [["path",{"d":"M16.247 7.761a6 6 0 0 1 0 8.478"}],["path",{"d":"M19.075 4.933a10 10 0 0 1 0 14.134"}],["path",{"d":"M4.925 19.067a10 10 0 0 1 0-14.134"}],["path",{"d":"M7.753 16.239a6 6 0 0 1 0-8.478"}],["circle",{"cx":"12","cy":"12","r":"2"}]], // lucide:radio
   compass: [["circle",{"cx":"12","cy":"12","r":"10"}],["path",{"d":"m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"}]], // lucide:compass

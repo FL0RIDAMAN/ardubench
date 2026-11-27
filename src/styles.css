@@ -193,6 +193,8 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .qual { font-size: 12px; color: var(--yellow-fg); }
 .row select, .mixer-select select, .numfield { background-color: var(--bg); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); font-size: 14px; line-height: 20px; }
 .row select { padding: 5px 10px; width: 140px; }
+.row-ctl:has(select.wide) { width: 220px; }
+.row select.wide { width: 220px; }
 /* Number fields with Betaflight-style yellow up/down chevrons (NumberInput). */
 .numfield { display: inline-flex; align-items: stretch; overflow: hidden; }
 .numfield:focus-within { border-color: var(--yellow-fg); }
@@ -366,3 +368,86 @@ h1.page-title:not(.page-head h1) { border-bottom: 2px solid var(--yellow); paddi
 .prow.phead { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
 .prow.changed { background: var(--changed-row); }
 
+
+/* notes, warnings and results shared by the setup tabs */
+.callout { border: 1px solid rgba(255, 187, 0, 0.35); background: rgba(255, 187, 0, 0.06); border-radius: var(--radius-ctl); padding: 10px 14px; margin-bottom: 18px; font-size: 14px; line-height: 1.55; }
+.callout p { margin: 4px 0; }
+.warn-list { margin: 0 0 18px; padding-left: 20px; font-size: 14px; line-height: 1.6; }
+.warn-list .bad { color: var(--red); }
+.warn-list .warn { color: var(--yellow-fg); }
+.warn-line { color: var(--yellow-fg); font-size: 14px; margin: 6px 0 10px; }
+.ok-line { color: var(--ok); font-size: 14px; font-weight: 600; margin: 8px 0; }
+.warn-text { color: var(--yellow-fg); }
+.small-btn { min-height: 26px; padding: 0 8px; font-size: 12px; font-weight: 600; }
+
+/* Ports grid, like Betaflight's (grid-cols auto x6, text-xs) */
+.ports-scroll { overflow-x: auto; padding-bottom: 8px; }
+.ports-grid { display: grid; grid-template-columns: minmax(120px, auto) repeat(6, auto); justify-content: space-between; font-size: 13px; }
+.ports-grid .ph { padding: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--line); max-width: 190px; }
+.prow-ports { display: contents; }
+.prow-ports > div { padding: 8px 6px; border-bottom: 1px solid var(--row-line); display: flex; align-items: center; }
+.prow-ports.changed > div { background: var(--changed-row); }
+.port-id { flex-direction: column; align-items: flex-start !important; justify-content: center; gap: 1px; padding-left: 10px !important; }
+.port-cell { display: flex; align-items: center; gap: 8px; }
+.port-cell.center { justify-content: center; }
+.ports-grid select { background-color: var(--bg); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); padding: 3px 8px; font-size: 13px; line-height: 18px; width: 160px; }
+.ports-grid .col-peripheral select:not(.port-baud) { width: 190px; }
+.ports-grid select.port-baud { width: 110px; }
+.port-cell.stack { flex-direction: column; align-items: flex-start; gap: 4px; }
+.port-card .port-cell.stack { align-items: flex-end; }
+.ports-grid select:disabled { opacity: 0.45; cursor: not-allowed; }
+.port-fixed { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.option-bits { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 6px 16px; margin: 8px 0 12px; font-size: 14px; }
+.check.bad { color: var(--red); }
+
+/* Compass table */
+.ctable-scroll { overflow-x: auto; }
+.ctable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.ctable th { text-align: left; font-weight: 600; color: var(--muted); padding: 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ctable th .tag, .ctable th .help { vertical-align: middle; }
+.ctable td { padding: 6px; border-bottom: 1px solid var(--row-line); vertical-align: middle; }
+.ctable tr.changed td { background: var(--changed-row); }
+.ctable select { background-color: var(--bg); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); padding: 3px 8px; font-size: 13px; max-width: 190px; }
+.ctable td.order { white-space: nowrap; }
+.ctable td.order button + button { margin-left: 4px; }
+
+/* calibration progress */
+.calbars { margin-top: 14px; display: flex; flex-direction: column; gap: 12px; }
+.calbar-head { display: flex; gap: 8px; align-items: baseline; font-size: 14px; }
+.calbar-status { margin-left: auto; font-size: 13px; color: var(--muted); }
+.calbar-status.ok { color: var(--ok); font-weight: 600; }
+.calbar-status.bad { color: var(--red); font-weight: 600; }
+.calbar .bar { height: 8px; background: var(--line); border-radius: 4px; margin: 6px 0 4px; overflow: hidden; }
+.calbar .bar div { height: 8px; background: var(--yellow); border-radius: 4px; transition: width 0.2s; }
+.calbar .bar div.bad { background: var(--red-solid); }
+.cal-block { padding: 10px 0 12px; border-bottom: 1px solid var(--row-line); }
+.cal-block p { margin: 6px 0 8px; color: var(--text-soft); }
+
+/* heading check */
+.heading-check { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+.heading-check .dial { width: 160px; height: 160px; flex: none; }
+.big-num { font-size: 32px; font-weight: 300; font-variant-numeric: tabular-nums; }
+
+/* attitude and calibration positions */
+.attitude-views { display: flex; justify-content: space-around; flex-wrap: wrap; gap: 12px; }
+.attitude-views figure { margin: 0; text-align: center; }
+.attitude-views figcaption { font-size: 14px; font-variant-numeric: tabular-nums; }
+.drone-view { display: block; margin: 0 auto; overflow: visible; }
+.drone-view.dim { opacity: 0.35; }
+.pose-steps { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.pose-step { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px; border: 2px solid var(--line-ctl); border-radius: var(--radius-ctl); font-size: 11px; color: var(--muted); min-width: 74px; }
+.pose-step.on { border-color: var(--yellow); color: var(--yellow-fg); }
+.pose-step.done { border-color: var(--ok); color: var(--ok); }
+.pose-now { text-align: center; margin: 6px 0; }
+.port-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(460px, 1fr)); gap: 14px; }
+.port-card { border: 2px solid rgba(115, 115, 115, 0.3); border-radius: var(--radius-box); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.port-card.changed { background: var(--changed-row); }
+.port-card-id { display: flex; flex-direction: column; gap: 1px; padding-bottom: 4px; border-bottom: 1px solid var(--row-line); }
+.port-card-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.port-card-row > :last-child { justify-self: end; }
+.port-card .port-cell { gap: 6px; }
+.port-card-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.port-card select { background-color: var(--bg); border: 1px solid var(--line-ctl); border-radius: var(--radius-ctl); padding: 3px 8px; font-size: 13px; line-height: 18px; width: 170px; }
+.port-card select.port-baud { width: 104px; }
+.port-card-label { white-space: nowrap; }
+.port-card select:disabled { opacity: 0.45; cursor: not-allowed; }

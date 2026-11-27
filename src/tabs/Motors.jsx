@@ -3,7 +3,7 @@ import { useVehicle } from '../useVehicle.js';
 import { getLayout, frameName, SUPPORTED_FRAME_TYPES } from '../frames.js';
 import { outputForMotor } from '../wizards.js';
 import { PWM_TYPES } from '../help.js';
-import { Panel, Toggle, Tag, Help, NumberInput } from '../components.jsx';
+import { Panel, Toggle, Tag, Help, NumberInput, Row } from '../components.jsx';
 import { QuadDiagram, VirtualDrone } from './QuadDiagram.jsx';
 import { useSpin } from './useSpin.js';
 import MotorOrderDialog from './MotorOrderDialog.jsx';
@@ -12,19 +12,6 @@ import MotorDirectionDialog from './MotorDirectionDialog.jsx';
 const MAX_TEST_PCT = 15; // hard cap for the sliders
 const SLIDER_IDLE_MS = 5000; // a slider left alone this long goes back to 0
 const COLORS = { 1: '#5B9BF0', 2: '#5CC45C', 3: '#FFBB00', 4: '#E5322D' };
-
-function Row({ kind = 'bf', label, qual, param, note, help, up, changed, children }) {
-  return (
-    <div className="row">
-      <div className="row-ctl">{children}</div>
-      <div className="row-text">
-        <div className="row-label"><Tag kind={kind} /><span>{label}</span>{qual && <span className="qual">{qual}</span>}{changed && <span className="dot" title="Not written yet" />}</div>
-        <div className="row-param">ArduPilot: {param}{note && <span> · {note}</span>}</div>
-      </div>
-      <Help id={help} up={up} />
-    </div>
-  );
-}
 
 export default function Motors({ stage, value, pending }) {
   const v = useVehicle();
