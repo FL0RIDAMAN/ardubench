@@ -7,6 +7,7 @@ import Motors from './tabs/Motors.jsx';
 import Parameters from './tabs/Parameters.jsx';
 import Placeholder from './tabs/Placeholder.jsx';
 import Welcome from './tabs/Welcome.jsx';
+import StatusBar from './StatusBar.jsx';
 
 const TABS = [
   { id: 'setup', label: 'Setup', icon: 'setup' },
@@ -25,11 +26,6 @@ const TABS = [
 function fmtParam(x) {
   if (x === undefined || x === null) return '—';
   return Number.isInteger(x) ? String(x) : String(Number(x.toFixed(4)));
-}
-
-function fmtTime(ms) {
-  const s = Math.floor(ms / 1000);
-  return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
 export default function App() {
@@ -170,15 +166,7 @@ export default function App() {
         </div>
       )}
 
-      <footer className="statusbar">
-        <span>↓ {(v.stats.rx / 1024).toFixed(1)} KB</span>
-        <span>↑ {(v.stats.tx / 1024).toFixed(1)} KB</span>
-        <span>{connected ? fmtTime(Date.now() - v.connectedAt) : '--:--'}</span>
-        {connected && <span className={v.armed ? 'armed' : 'disarmed'}>{v.armed ? 'ARMED' : 'DISARMED'}</span>}
-        {v.battery && v.battery.voltage > 0 && <span>{v.battery.voltage.toFixed(2)} V</span>}
-        {v.rebooting && <span className="warn">REBOOTING</span>}
-        <span className="right">{connected ? `${fw ? fw.text : 'ArduPilot'} · ${v.isVirtual ? 'Virtual Mode' : 'USB'}` : 'Not connected'}</span>
-      </footer>
+      <StatusBar v={v} firmware={fw ? fw.text : null} />
     </div>
   );
 }

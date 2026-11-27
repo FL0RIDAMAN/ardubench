@@ -102,7 +102,23 @@ export class VirtualLink {
       type: MAV_TYPE_QUADROTOR, autopilot: MAV_AUTOPILOT_ARDUPILOTMEGA,
       base_mode: 0x51, custom_mode: 0, system_status: MAV_STATE_STANDBY, mavlink_version: 3,
     });
-    this.send('SYS_STATUS', { voltage_battery: 0, current_battery: -1, battery_remaining: -1, load: 120 });
+    // Gyro, accel, compass, baro and GPS present and healthy (no rangefinder),
+    // a 4S pack plugged in, 12% CPU load. GPS has a 3D fix.
+    const sensors = 1 | 2 | 4 | 8 | 32;
+    this.send('SYS_STATUS', {
+      onboard_control_sensors_present: sensors, onboard_control_sensors_enabled: sensors, onboard_control_sensors_health: sensors,
+      voltage_battery: 16400, current_battery: -1, battery_remaining: -1, load: 120,
+    });
+    this.send('GPS_RAW_INT', { time_usec: Date.now() * 1000, fix_type: 3, lat: 0, lon: 0, alt: 0, eph: 90, epv: 120, vel: 0, cog: 0, satellites_visible: 12 });
+  }
+
+  // Three flight logs on the "SD card", like ArduPilot's LOG_ENTRY replies.
+  listLogs() {
+    const logs = [1887436, 6501171, 3565158]; // bytes
+    const now = Math.floor(Date.now() / 1000);
+    logs.forEach((size, i) => setTimeout(() => this.send('LOG_ENTRY', {
+      id: i + 1, num_logs: logs.length, last_log_num: logs.length, time_utc: now - (logs.length - i) * 86400, size,
+    }), 10 * (i + 1)));
   }
 
   // Which output drives ArduPilot motor number m, per the running config.
@@ -179,6 +195,9 @@ export class VirtualLink {
       }
       case 'COMMAND_LONG':
         this.command(m);
+        break;
+      case 'LOG_REQUEST_LIST':
+        this.listLogs();
         break;
       default:
         break;

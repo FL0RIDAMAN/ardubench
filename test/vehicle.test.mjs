@@ -15,6 +15,14 @@ const link = new VirtualLink({ wiring: MISWIRED });
 await v.connect(link);
 check(v.connected, 'connected and got heartbeat');
 check(v.paramsLoaded && v.param('FRAME_TYPE') === 1, `loaded ${v.params.size} params`);
+await sleep(1200);
+// Status bar data (SYS_STATUS, GPS_RAW_INT, LOG_ENTRY), as the virtual FC reports it.
+check(v.load === 12, 'CPU load from SYS_STATUS (per mille -> %): ' + v.load);
+check(v.sensors.present === (1 | 2 | 4 | 8 | 32) && v.sensors.health === v.sensors.present, 'sensors present and healthy: gyro, accel, compass, baro, GPS');
+check(v.battery && Math.abs(v.battery.voltage - 16.4) < 1e-6 && v.battery.current === null, 'battery 16.4 V, no current reading');
+check(v.gps && v.gps.fix === 3 && v.gps.sats === 12, 'GPS 3D fix, 12 satellites');
+check(v.logs && v.logs.done && v.logs.count === 3 && v.logs.bytes === 1887436 + 6501171 + 3565158, 'log list: 3 logs, sizes summed');
+check(v.systemStatus === 3 && Date.now() - v.lastRxAt < 1000, 'standby (no failsafe), link up');
 check(Math.abs(v.param('MOT_SPIN_ARM') - 0.1) < 1e-6, 'float param decoded');
 
 await v.setParam('MOT_SPIN_ARM', 0.12);

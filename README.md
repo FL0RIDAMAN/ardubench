@@ -131,4 +131,8 @@ Built and tested against the Virtual FC only. On the bench, check:
 6. Motor direction: `SERVO_BLH_RVMASK` reverses your ESCs after a reboot (it
    depends on ESC firmware, e.g. BLHeli_32, AM32, Bluejay).
 7. After a reboot over USB, the port drops; the app asks you to reconnect.
-8. Help text: check against the ArduPilot parameter docs.
+8. Status bar: the FC accepts the 2 Hz `SYS_STATUS` / `GPS_RAW_INT` requests;
+   the sensor icons match the board (gyro, accel, compass, baro, GPS,
+   rangefinder); GPS turns yellow at a 3D fix; the shield lights during a
+   failsafe; the log count and size match the logs on the SD card.
+9. Help text: check against the ArduPilot parameter docs.

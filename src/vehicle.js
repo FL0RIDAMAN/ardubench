@@ -12,6 +12,12 @@ const MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN = 246;
 const MAV_CMD_SET_MESSAGE_INTERVAL = 511;
 const MOTOR_TEST_THROTTLE_PERCENT = 0;
 const ESC_TELEMETRY_1_TO_4_ID = 11030;
+const SYS_STATUS_ID = 1;
+const GPS_RAW_INT_ID = 24;
+export const MAV_STATE_CRITICAL = 5; // ArduCopter reports this while any failsafe is active
+
+// SYS_STATUS sensor bits (MAV_SYS_STATUS_SENSOR) used by the status bar.
+export const SENSOR = { gyro: 1, accel: 2, mag: 4, baro: 8, gps: 32, rangefinder: 256 };
 
 export const ACK_RESULT = {
   0: 'accepted', 1: 'temporarily rejected', 2: 'denied', 3: 'unsupported', 4: 'failed', 5: 'in progress', 6: 'cancelled',
@@ -48,6 +54,12 @@ export class Vehicle {
     this.rpmHistory = []; // [{ t, rpm: [..] }]
     this.messages = []; // { t, severity, text }
     this.battery = null;
+    this.systemStatus = 0; // HEARTBEAT system_status (MAV_STATE)
+    this.load = null; // CPU load, percent (SYS_STATUS.load is per mille)
+    this.sensors = { present: 0, health: 0 }; // SYS_STATUS bitmasks
+    this.gps = null; // { fix, sats } from GPS_RAW_INT
+    this.logs = null; // { count, bytes, done } from LOG_ENTRY replies
+    this.lastRxAt = 0; // when the last bytes arrived from the FC
     this.physical = []; // virtual mode only: what you'd see on the bench, [{ pos, dir }] per spinning arm
     this.seq = 0;
     this.stats = { rx: 0, tx: 0 };
@@ -78,7 +90,7 @@ export class Vehicle {
     this.linkName = link.name;
     this.isVirtual = !!link.isVirtual;
     this.parser = new MavParser((m) => this.handle(m));
-    link.onData = (bytes) => { this.stats.rx += bytes.length; this.parser.push(bytes); };
+    link.onData = (bytes) => { this.stats.rx += bytes.length; this.lastRxAt = Date.now(); this.parser.push(bytes); };
     link.onClose = () => this.disconnect(true);
     if (link.isVirtual) link.onPhysical = (p) => { this.physical = p; this.emit(); };
     await link.open();
@@ -97,6 +109,7 @@ export class Vehicle {
     this.emit();
     await this.startStreams();
     await this.loadParams();
+    this.requestLogList();
   }
 
   async disconnect(lost = false) {
@@ -128,8 +141,20 @@ export class Vehicle {
   }
 
   async startStreams() {
-    // Ask for ESC telemetry at 10 Hz. Not every firmware accepts this; that's fine.
-    try { await this.command(MAV_CMD_SET_MESSAGE_INTERVAL, [ESC_TELEMETRY_1_TO_4_ID, 100000]); } catch {}
+    // Ask for ESC telemetry at 10 Hz, and the status bar's SYS_STATUS and
+    // GPS_RAW_INT at 2 Hz. Not every firmware accepts each; that's fine.
+    for (const [id, us] of [[ESC_TELEMETRY_1_TO_4_ID, 100000], [SYS_STATUS_ID, 500000], [GPS_RAW_INT_ID, 500000]]) {
+      try { await this.command(MAV_CMD_SET_MESSAGE_INTERVAL, [id, us]); } catch {}
+    }
+  }
+
+  // Ask the FC which logs it holds (LOG_ENTRY replies). ArduPilot only answers
+  // while disarmed, and listing doesn't pause logging (AP_Logger_MAVLinkLogTransfer.cpp).
+  requestLogList() {
+    if (this.armed || !this.connected) return;
+    this.logs = { count: null, bytes: 0, done: false, seen: new Map() };
+    this.send('LOG_REQUEST_LIST', { target_system: this.target.sys, target_component: this.target.comp, start: 0, end: 0xffff });
+    this.emit();
   }
 
   // ---- incoming messages ------------------------------------------------
@@ -143,15 +168,30 @@ export class Vehicle {
           this.rebooting = false;
           this.messages.push({ t: Date.now(), severity: 6, text: 'Flight controller is back after reboot' });
           this.startStreams();
-          this.loadParams({ keepOld: true });
+          this.loadParams({ keepOld: true }).then(() => this.requestLogList(), () => {});
         }
         this.heartbeat = m;
         this.lastHeartbeat = Date.now();
         this.armed = !!(m.base_mode & 0x80);
+        this.systemStatus = m.system_status;
         break;
       case 'SYS_STATUS':
-        this.battery = { voltage: m.voltage_battery / 1000, current: m.current_battery / 100 };
+        // 65535 mV means the FC has no voltage reading.
+        this.battery = m.voltage_battery === 0xffff ? null : { voltage: m.voltage_battery / 1000, current: m.current_battery === -1 ? null : m.current_battery / 100 };
+        this.load = m.load / 10;
+        this.sensors = { present: m.onboard_control_sensors_present, health: m.onboard_control_sensors_health };
         break;
+      case 'GPS_RAW_INT':
+        this.gps = { fix: m.fix_type, sats: m.satellites_visible };
+        break;
+      case 'LOG_ENTRY': {
+        if (!this.logs) this.logs = { count: null, bytes: 0, done: false, seen: new Map() };
+        this.logs.count = m.num_logs;
+        if (m.num_logs > 0 && m.id > 0) this.logs.seen.set(m.id, m.size);
+        this.logs.bytes = [...this.logs.seen.values()].reduce((a, b) => a + b, 0);
+        this.logs.done = m.num_logs === 0 || this.logs.seen.size >= m.num_logs;
+        break;
+      }
       case 'PARAM_VALUE': {
         this.params.set(m.param_id, { value: m.param_value, type: m.param_type, index: m.param_index });
         this.paramCount = m.param_count;

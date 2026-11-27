@@ -3,7 +3,7 @@ import { encode, MavParser } from '../src/mavlink/codec.js';
 const cases = JSON.parse(readFileSync(new URL('./cases.json', import.meta.url)));
 let fail = 0;
 const hex = (u8) => Buffer.from(u8).toString('hex');
-const close = (a, b) => typeof a === 'number' ? Math.abs(a - b) < 1e-5 : JSON.stringify(a) === JSON.stringify(b);
+const close = (a, b) => typeof a === 'bigint' ? a === BigInt(b) : typeof a === 'number' ? Math.abs(a - b) < 1e-5 : JSON.stringify(a) === JSON.stringify(b);
 const mine = [];
 for (const c of cases) {
   const out = hex(encode(c.name, c.fields));
