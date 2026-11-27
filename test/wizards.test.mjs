@@ -1,5 +1,5 @@
 import { getLayout } from '../src/frames.js';
-import { orderChanges, directionMask } from '../src/wizards.js';
+import { orderChanges, directionMask, reversedMotors, maskWith } from '../src/wizards.js';
 let fail = 0;
 const eq = (a, b, msg) => { const ok = JSON.stringify(a) === JSON.stringify(b); console.log((ok ? 'ok   ' : 'FAIL ') + msg, ok ? '' : JSON.stringify(a)); if (!ok) fail++; };
 const L = getLayout(1, 1);
@@ -13,5 +13,12 @@ eq(directionMask(L, P, { 1: true, 2: true, 3: false, 4: true }), 4, 'reverse mot
 eq(directionMask(L, { ...P, SERVO_BLH_RVMASK: 4 }, { 3: false }), 0, 'reversing again clears the bit');
 const B = getLayout(1, 12);
 eq(B.motors.map((m) => [m.num, m.pos, m.letter]), [[1,'RR','B'],[2,'FR','A'],[3,'RL','C'],[4,'FL','D']], 'BetaFlightX layout');
+// Motor direction dialog: read and set reversal per motor, through the output each motor is on.
+eq(reversedMotors(L, { ...P, SERVO_BLH_RVMASK: 4 }), { 1: false, 2: false, 3: true, 4: false }, 'bit 2 = motor 3 reversed');
+const swapped = { ...P, SERVO2_FUNCTION: 36, SERVO4_FUNCTION: 34, SERVO_BLH_RVMASK: 2 };
+eq(reversedMotors(L, swapped), { 1: false, 2: false, 3: false, 4: true }, 'after remap, bit 1 (output 2) = motor 4');
+eq(maskWith(L, P, { 1: false, 2: false, 3: true, 4: false }), 4, 'reverse motor 3 -> mask 4');
+eq(maskWith(L, swapped, { 4: false, 2: true }), 8, 'set by motor, not output: motor 4 normal, motor 2 (output 4) reversed');
+eq(maskWith(L, { ...P, SERVO_BLH_RVMASK: 0x30 }, { 1: true }), 0x31, 'non-motor output bits are kept');
 console.log(fail ? `FAILED ${fail}` : 'OK: wizards');
 process.exit(fail ? 1 : 0);

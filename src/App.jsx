@@ -21,6 +21,12 @@ const TABS = [
   { id: 'qc', label: 'QC Checklist', icon: 'qc' },
 ];
 
+// Parameter values as people expect to read them: 0.12 rather than 0.11999999731779099.
+function fmtParam(x) {
+  if (x === undefined || x === null) return '—';
+  return Number.isInteger(x) ? String(x) : String(Number(x.toFixed(4)));
+}
+
 function fmtTime(ms) {
   const s = Math.floor(ms / 1000);
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -146,6 +152,16 @@ export default function App() {
 
       {connected && (pendingCount > 0 || v.rebootNeeded) && (
         <div className="savebar">
+          {pendingCount > 0 && (
+            <ul className="savebar-list" aria-label="Unsaved changes">
+              {Object.entries(pending).map(([name, p]) => (
+                <li key={name}>
+                  <span className="mono">{name} {fmtParam(v.param(name))} → {fmtParam(p.value)}</span>
+                  {p.reason && <span className="muted">: {p.reason}</span>}
+                </li>
+              ))}
+            </ul>
+          )}
           {pendingCount > 0 && <span>{pendingCount} unsaved change{pendingCount > 1 ? 's' : ''}</span>}
           {pendingCount > 0 && <button type="button" className="btn-grey" onClick={() => setPending({})}>Discard</button>}
           {pendingCount > 0 && <button type="button" className="btn-yellow" onClick={writeAll} disabled={writing}>{writing ? 'Writing…' : 'Write to FC'}</button>}

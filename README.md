@@ -43,9 +43,9 @@ Think of it in layers, from the USB cable up to the screen:
 
 - **Link**: moves bytes. `SerialLink` uses the browser's WebSerial API.
   `VirtualLink` is a pretend flight controller inside the app. It speaks real
-  MAVLink, so the rest of the app can't tell the difference. It's built with two
-  mistakes for the wizards to find: outputs 2 and 4 swapped, and the
-  front-left motor spinning backwards.
+  MAVLink, so the rest of the app can't tell the difference. It's a correctly
+  built QUAD X. Changing the frame doesn't move its "wires", so after a frame
+  change you run Motor order and Motor direction, as on a real quad.
 - **MAVLink codec**: MAVLink is the language ArduPilot speaks. Each message is a
   small packet: a header, the data, and a checksum. `codec.js` builds and reads
   those packets. The message layouts in `defs.js` are generated from the
@@ -59,30 +59,68 @@ Think of it in layers, from the USB cable up to the screen:
   letters (A–D, clockwise from front-right).
 - **help.js**: the text in the "?" popovers and the Betaflight equivalents.
 
-## How the wizards decide what to change
+## Motor order and Motor direction
 
-- **Motor order**: spins each motor number in turn; you click where you see a
-  motor move. If output 2 is set to "Motor 2" but its motor is physically on the
-  rear-right arm (where Motor 4 belongs), output 2 gets set to Motor 4
+These work like the same two buttons in Betaflight Configurator 2026.6.2
+(`MotorOutputReorderingDialog.vue` and `EscDshotDirectionDialog.vue` in the
+betaflight-configurator repo). Solder the motors in any order, then fix it here.
+Both buttons are disabled while there are unsaved changes or motor test is on,
+the same as Betaflight.
+
+- **Motor order**: confirm props are off, click Start. Each motor jerks in turn
+  (motor 1, 2, 3, 4) and you click the arm that moves. Then press and hold each
+  arm to check it, and click **Save and reboot**. ArduPilot keeps motor order in
+  `SERVOn_FUNCTION` (which output drives Motor 1–4). For example, if output 2's
+  motor is really on the rear-right arm, output 2 becomes Motor 4
   (`SERVO2_FUNCTION` 34 → 36).
-- **Motor direction**: spins each motor; you say if it's going the right way.
-  Each "wrong way" flips that output's bit in `SERVO_BLH_RVMASK` (DShot ESCs only).
+- **Motor direction** (DShot only): **Wizard** spins all motors at once and you
+  click the number of any motor going the wrong way; **Individually** lets you
+  hold one motor (or **All**) to spin it, then pick Normal or Reverse. **Save and
+  reboot** writes `SERVO_BLH_RVMASK` (one bit per output, set = reversed).
 
-Changes are collected at the bottom as **unsaved changes**, written with
-**Write to FC**, and most need **Reboot FC** to take effect.
+One place it can't match Betaflight: Betaflight sends the direction straight to
+the ESC, so a click changes the spin at once. ArduPilot only sends
+`SERVO_BLH_RVMASK` to the ESCs at startup (`AP_BLHeli::init`), so a change shows
+up after **Save and reboot**.
+
+The master slider spins all motors together, like Betaflight: the app sends one
+motor test per motor, and during a motor test ArduPilot keeps each motor at its
+last value (`ArduCopter/motors.cpp`; Mission Planner's "Test all motors" button
+works the same way).
+
+Other changes on the Motors tab are collected at the bottom as **unsaved
+changes**, written with **Write to FC**, and most need **Reboot FC** to take effect.
+
+## Checked against ArduPilot's source
+
+From ArduPilot's code on GitHub (master branch), not yet on hardware:
+
+- Motor positions, spin directions and test order (A–D) for FRAME_TYPE 1, 12
+  and 18 match `frames.js` (`libraries/AP_Motors/AP_MotorsMatrix.cpp`).
+- A motor test command with timeout 0 ends the test, and a new command while a
+  test is running just updates it (`ArduCopter/motor_test.cpp`).
+- 0% throttle in a motor test outputs the minimum, so the motor stops
+  (`ArduCopter/motor_test.cpp`).
+- `SERVOn_FUNCTION` and `SERVO_BLH_RVMASK` are marked "reboot required"
+  (`libraries/SRV_Channel/SRV_Channel.cpp`, `libraries/AP_BLHeli/AP_BLHeli.cpp`);
+  the reversed mask is only sent to the ESCs in `AP_BLHeli::init`.
+- During a motor test only the commanded motor's output is rewritten, so
+  several motors can spin at once (`ArduCopter/motors.cpp`, `motor_test.cpp`).
 
 ## Things to verify on a real flight controller
 
 Built and tested against the Virtual FC only. On the bench, check:
 
-1. Motor test command (`MAV_CMD_DO_MOTOR_TEST`): that sequence numbers 1–4
-   match test order A–D, and that re-sending it every 0.5 s keeps the motor
-   spinning smoothly.
-2. Stopping: the app sends throttle 0 / timeout 0 to stop early. Confirm
-   ArduPilot stops the motor on that. (If not, it still stops within 1 s.)
-3. **Run A→D** (motor count 4) runs the motors one after another.
+1. Motor test (`MAV_CMD_DO_MOTOR_TEST`): re-sending it every 0.5 s keeps the
+   motor spinning smoothly, and sequence numbers 1–4 spin arms A–D.
+2. Stopping early (throttle 0 / timeout 0) stops the motor at once.
+3. The master slider spins all motors together, and moving one motor's slider
+   while the others spin changes just that motor.
 4. ESC telemetry: that `ESC_TELEMETRY_1_TO_4` arrives after the app requests it,
    and that index 1 = output 1.
-5. FRAME_TYPE 12 / 18 (Betaflight order) layouts match the real motor order.
-6. After a reboot over USB, the port drops; the app asks you to reconnect.
-7. Help text: check against the ArduPilot parameter docs.
+5. Motor order's jerk (8% for 0.25 s, then 0% for 0.5 s) is easy to see and
+   doesn't upset the ESC.
+6. Motor direction: `SERVO_BLH_RVMASK` reverses your ESCs after a reboot (it
+   depends on ESC firmware, e.g. BLHeli_32, AM32, Bluejay).
+7. After a reboot over USB, the port drops; the app asks you to reconnect.
+8. Help text: check against the ArduPilot parameter docs.

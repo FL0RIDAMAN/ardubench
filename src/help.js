@@ -82,8 +82,8 @@ export const HELP = {
   master: {
     title: 'Master',
     items: [
-      ['', 'Tests every motor at the master throttle.'],
-      ['Betaflight difference: ', 'Betaflight’s master slider spins all motors together. ArduPilot’s motor test spins one motor at a time, so this runs them in test order A → B → C → D, 2 seconds each.'],
+      ['', 'Spins all motors together at the master throttle, like Betaflight. Moving one motor’s slider afterwards changes just that motor.'],
+      ['ArduPilot: ', 'Sent as one MAV_CMD_DO_MOTOR_TEST per motor. During a motor test ArduPilot keeps each motor at its last value, so they all spin at once (Mission Planner’s “Test all motors” does the same).'],
     ],
   },
 };

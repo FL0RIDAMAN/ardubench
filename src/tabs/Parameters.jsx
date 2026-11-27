@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useVehicle } from '../useVehicle.js';
 import { BF_EQUIV } from '../help.js';
-import { Tag } from '../components.jsx';
+import { Tag, NumberInput } from '../components.jsx';
 
 // Every parameter on the FC, searchable, with Betaflight equivalents where one exists.
 export default function Parameters({ stage, value, pending }) {
@@ -31,17 +31,13 @@ export default function Parameters({ stage, value, pending }) {
             <div className={`prow ${pending[n] ? 'changed' : ''}`} key={n}>
               <span className="mono">{n}</span>
               <span>
-                <input
-                  aria-label={n}
-                  className="num"
-                  type="number"
-                  step={isFloat ? 'any' : 1}
-                  defaultValue={isFloat ? +cur.toFixed(6) : cur}
-                  key={cur}
-                  onBlur={(e) => {
-                    const x = Number(e.target.value);
-                    if (e.target.value !== '' && Number.isFinite(x)) stage(n, isFloat ? x : Math.round(x), 'Edited in Parameters');
-                  }}
+                <NumberInput
+                  label={n}
+                  mono
+                  width={140}
+                  step={isFloat ? 0.01 : 1}
+                  value={isFloat ? +cur.toFixed(6) : cur}
+                  onCommit={(x) => stage(n, isFloat ? x : Math.round(x), 'Edited in Parameters')}
                 />
                 {pending[n] && <span className="dot" title="Not written yet" />}
               </span>

@@ -48,11 +48,11 @@ export class Vehicle {
     this.rpmHistory = []; // [{ t, rpm: [..] }]
     this.messages = []; // { t, severity, text }
     this.battery = null;
-    this.physical = null; // virtual mode only: what you'd see on the bench
+    this.physical = []; // virtual mode only: what you'd see on the bench, [{ pos, dir }] per spinning arm
     this.seq = 0;
     this.stats = { rx: 0, tx: 0 };
     this.pendingParams = new Map(); // name -> resolve
-    this.pendingAcks = new Map(); // command -> resolve
+    this.pendingAcks = new Map(); // command -> [resolve, ...] in send order (several can be in flight)
     this.rebootNeeded = false;
     this.rebooting = false;
   }
@@ -162,8 +162,8 @@ export class Vehicle {
         break;
       }
       case 'COMMAND_ACK': {
-        const waiter = this.pendingAcks.get(m.command);
-        if (waiter) { this.pendingAcks.delete(m.command); waiter(m.result); }
+        const waiters = this.pendingAcks.get(m.command);
+        if (waiters && waiters.length) waiters.shift()(m.result);
         break;
       }
       case 'STATUSTEXT':
@@ -244,19 +244,27 @@ export class Vehicle {
 
   async command(cmd, params = [], timeoutMs = 1500) {
     const p = [...params, 0, 0, 0, 0, 0, 0, 0].slice(0, 7);
-    const acked = new Promise((resolve) => this.pendingAcks.set(cmd, resolve));
+    let resolveAck;
+    const acked = new Promise((resolve) => { resolveAck = resolve; });
+    if (!this.pendingAcks.has(cmd)) this.pendingAcks.set(cmd, []);
+    this.pendingAcks.get(cmd).push(resolveAck);
     this.send('COMMAND_LONG', {
       target_system: this.target.sys, target_component: this.target.comp, command: cmd, confirmation: 0,
       param1: p[0], param2: p[1], param3: p[2], param4: p[3], param5: p[4], param6: p[5], param7: p[6],
     });
     const result = await Promise.race([acked, sleep(timeoutMs).then(() => 'timeout')]);
-    if (result === 'timeout') { this.pendingAcks.delete(cmd); throw new Error('No reply to command ' + cmd); }
+    if (result === 'timeout') {
+      const waiters = this.pendingAcks.get(cmd) || [];
+      const i = waiters.indexOf(resolveAck);
+      if (i >= 0) waiters.splice(i, 1);
+      throw new Error('No reply to command ' + cmd);
+    }
     if (result !== 0) throw new Error(`Command ${cmd} ${ACK_RESULT[result] || 'failed'}`);
     return result;
   }
 
   // Spin one motor. seq is ArduPilot's motor-test sequence (1 = A).
-  // ArduPilot spins one motor at a time with this command.
+  // Each command sets one motor; during a test the others keep their last value.
   motorTest(seq, throttlePct, timeoutSec) {
     return this.command(MAV_CMD_DO_MOTOR_TEST, [seq, MOTOR_TEST_THROTTLE_PERCENT, throttlePct, timeoutSec, 1, 0]);
   }

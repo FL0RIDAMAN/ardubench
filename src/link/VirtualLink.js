@@ -2,12 +2,13 @@
 //
 // It speaks real MAVLink bytes, exactly like a USB connection would, so the
 // rest of the app can't tell the difference. Use it to click through the app
-// with no hardware, and to demo the wizards.
+// with no hardware.
 //
-// To make the wizards worth trying, this virtual quad is built with two
-// mistakes, the kind that happen on a real bench:
-//   - the motors on outputs 2 and 4 are plugged in swapped, and
-//   - the front-left motor spins the wrong way.
+// The virtual quad is built correctly for the frame it starts on (QUAD X,
+// FRAME_TYPE 1): every motor is on the right output and spins the right way.
+// Like a real quad, changing the frame doesn't move any wires, so after a
+// frame change you use Motor order and Motor direction, as on a real build.
+// Tests can pass a different `wiring` to simulate a mis-soldered quad.
 
 import { encode, MavParser } from '../mavlink/codec.js';
 import { getLayout, MOTOR_FUNCTION_BASE } from '../frames.js';
@@ -36,17 +37,18 @@ const DEFAULT_PARAMS = [
 ];
 
 // Hidden "hardware": which physical position each output's motor is mounted
-// at, and which way it spins before any reversal. Outputs 2 and 4 are swapped
-// (should be RL and RR), and the FL motor is wired backwards.
-const WIRING = {
+// at, and which way it spins before any reversal. This is a correct QUAD X
+// build (ArduPilot's motor table, libraries/AP_Motors/AP_MotorsMatrix.cpp).
+export const CORRECT_WIRING = {
   1: { pos: 'FR', dir: 'CCW' },
-  2: { pos: 'RR', dir: 'CW' },
-  3: { pos: 'FL', dir: 'CCW' },
-  4: { pos: 'RL', dir: 'CCW' },
+  2: { pos: 'RL', dir: 'CCW' },
+  3: { pos: 'FL', dir: 'CW' },
+  4: { pos: 'RR', dir: 'CW' },
 };
 
 export class VirtualLink {
-  constructor() {
+  constructor({ wiring = CORRECT_WIRING } = {}) {
+    this.wiring = wiring;
     this.name = 'Virtual';
     this.isVirtual = true;
     this.onData = () => {};
@@ -56,7 +58,7 @@ export class VirtualLink {
     this.params = new Map(DEFAULT_PARAMS.map(([n, v, t]) => [n, { value: v, type: t }]));
     this.applied = this.snapshot(); // values the "firmware" is running with
     this.parser = new MavParser((m) => this.handle(m));
-    this.test = null; // { output, throttle, until }
+    this.test = null; // { until, out: { output number: throttle % } } while a motor test runs
     this.temps = [24, 25, 24, 24];
     this.rebootingUntil = 0;
     this.timers = [];
@@ -75,6 +77,7 @@ export class VirtualLink {
   }
 
   async close() {
+    this.closed = true; // delayed replies (e.g. "back after reboot") must not reach a closed app
     this.timers.forEach(clearInterval);
     this.timers = [];
   }
@@ -85,7 +88,7 @@ export class VirtualLink {
   }
 
   send(name, fields) {
-    if (Date.now() < this.rebootingUntil) return;
+    if (this.closed || Date.now() < this.rebootingUntil) return;
     const pkt = encode(name, fields, { seq: this.seq++ & 0xff, sysid: 1, compid: 1 });
     this.onData(pkt);
   }
@@ -115,22 +118,20 @@ export class VirtualLink {
       this.text(6, 'finished motor test');
     }
     const rpm = [0, 0, 0, 0], cur = [0, 0, 0, 0];
-    if (this.test) {
-      const i = this.test.output - 1;
-      if (i >= 0 && i < 4) {
-        rpm[i] = Math.round(this.test.throttle * 522 + (Math.random() - 0.5) * 60);
-        cur[i] = Math.round(this.test.throttle * 7.5); // centiamps
+    // What a person at the bench would see: which arms spin, which way.
+    const physical = [];
+    for (let i = 0; i < 4; i++) {
+      const throttle = this.test ? this.test.out[i + 1] || 0 : 0;
+      if (throttle > 0) {
+        rpm[i] = Math.round(throttle * 522 + (Math.random() - 0.5) * 60);
+        cur[i] = Math.round(throttle * 7.5); // centiamps
         this.temps[i] = Math.min(60, this.temps[i] + 0.02);
+        const w = this.wiring[i + 1];
+        const reversed = (this.applied.SERVO_BLH_RVMASK >> i) & 1;
+        physical.push({ pos: w.pos, dir: reversed ? (w.dir === 'CW' ? 'CCW' : 'CW') : w.dir });
+      } else {
+        this.temps[i] = Math.max(24, this.temps[i] - 0.01);
       }
-    }
-    for (let i = 0; i < 4; i++) if (!this.test || this.test.output - 1 !== i) this.temps[i] = Math.max(24, this.temps[i] - 0.01);
-
-    // What a person at the bench would see: which position spins, which way.
-    let physical = null;
-    if (this.test && WIRING[this.test.output]) {
-      const w = WIRING[this.test.output];
-      const reversed = (this.applied.SERVO_BLH_RVMASK >> (this.test.output - 1)) & 1;
-      physical = { pos: w.pos, dir: reversed ? (w.dir === 'CW' ? 'CCW' : 'CW') : w.dir };
     }
     this.onPhysical(physical);
 
@@ -194,11 +195,19 @@ export class VirtualLink {
         const motor = layout && layout.motors.find((x) => x.testSeq === seq);
         if (!motor) { this.text(3, 'Motor Test: invalid motor'); this.ack(m.command, 4); return; }
         const output = this.outputForMotor(motor.num);
-        if (throttle <= 0 || timeout <= 0) {
+        // Like ArduCopter's motor_test.cpp + motors.cpp: timeout 0 ends the
+        // test (every motor stops). Otherwise it starts the test (all motors
+        // at minimum) or updates it: the commanded motor goes to the new
+        // throttle and every other motor keeps its last value, so several
+        // can spin at once (Mission Planner's "Test all motors" relies on
+        // this). 0% = that motor stopped. Each command restarts the timeout.
+        if (timeout <= 0) {
+          if (this.test) this.text(6, 'finished motor test');
           this.test = null;
         } else {
-          if (!this.test || this.test.output !== output) this.text(6, 'starting motor test');
-          this.test = { output, throttle, until: Date.now() + timeout * 1000 };
+          if (!this.test) { this.text(6, 'starting motor test'); this.test = { out: {} }; }
+          this.test.out[output] = Math.max(0, throttle);
+          this.test.until = Date.now() + timeout * 1000;
         }
         this.ack(m.command, 0);
         return;

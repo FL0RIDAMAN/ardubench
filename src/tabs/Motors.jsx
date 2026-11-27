@@ -1,39 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { useVehicle } from '../useVehicle.js';
-import { getLayout, frameName, SUPPORTED_FRAME_TYPES, MOTOR_FUNCTION_BASE, POSITIONS } from '../frames.js';
-import { orderChanges, directionMask, outputForMotor } from '../wizards.js';
+import { getLayout, frameName, SUPPORTED_FRAME_TYPES } from '../frames.js';
+import { outputForMotor } from '../wizards.js';
 import { PWM_TYPES } from '../help.js';
-import { Panel, Toggle, Tag, Help } from '../components.jsx';
+import { Panel, Toggle, Tag, Help, NumberInput } from '../components.jsx';
+import { QuadDiagram, VirtualDrone } from './QuadDiagram.jsx';
+import { useSpin } from './useSpin.js';
+import MotorOrderDialog from './MotorOrderDialog.jsx';
+import MotorDirectionDialog from './MotorDirectionDialog.jsx';
 
 const MAX_TEST_PCT = 15; // hard cap for the sliders
-const WIZARD_PCT = 8; // throttle the wizards spin at
 const SLIDER_IDLE_MS = 5000; // a slider left alone this long goes back to 0
-const WIZARD_SPIN_MS = 6000; // each wizard step spins this long ("Spin again" restarts it)
 const COLORS = { 1: '#5B9BF0', 2: '#5CC45C', 3: '#FFBB00', 4: '#E5322D' };
-
-function NumField({ value, onCommit, step = 1, suffix, width = 90, label }) {
-  const [text, setText] = useState(String(value ?? ''));
-  useEffect(() => setText(String(value ?? '')), [value]);
-  const commit = () => {
-    const x = Number(text);
-    if (text !== '' && Number.isFinite(x) && x !== value) onCommit(x);
-    else setText(String(value ?? ''));
-  };
-  return (
-    <span className="numfield" style={{ width }}>
-      <input
-        aria-label={label}
-        type="number"
-        step={step}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-      />
-      {suffix && <span className="suffix">{suffix}</span>}
-    </span>
-  );
-}
 
 function Row({ kind = 'bf', label, qual, param, note, help, up, changed, children }) {
   return (
@@ -53,123 +31,80 @@ export default function Motors({ stage, value, pending }) {
   const params = Object.fromEntries([...v.params].map(([k, p]) => [k, p.value]));
   // Tests always use the configuration the FC is running, not unsaved edits.
   const layout = getLayout(params.FRAME_CLASS, params.FRAME_TYPE);
+  // The diagram shows the frame as edited (including unsaved changes), so
+  // picking a mixer or the reversed toggle redraws it right away.
+  const shown = getLayout(value('FRAME_CLASS'), value('FRAME_TYPE'));
+  // True while the picture shows an unsaved frame change.
+  const framePreview = !!(pending.FRAME_CLASS || pending.FRAME_TYPE);
 
   const [propsOff, setPropsOff] = useState(false);
   const [bfNums, setBfNums] = useState(false);
   const [sel, setSel] = useState(null);
-  const [slider, setSlider] = useState({ motor: null, value: 0 });
+  const [vals, setVals] = useState({}); // motor number -> slider %, like Betaflight's motor sliders
   const [master, setMaster] = useState(0);
-  const [wizard, setWizard] = useState(null);
+  const [dialog, setDialog] = useState(null); // 'order' | 'direction' | null
   const [testError, setTestError] = useState('');
   const lastInput = useRef(0);
-  const running = useRef(null); // seq currently being sent
 
-  const canSpin = !!(propsOff && v.connected && !v.armed && !v.rebooting && layout);
-  const wizardMotor = wizard && !wizard.done ? wizard.steps[wizard.i] : null;
+  // Like Betaflight: motor test is off while there are unsaved changes (the
+  // screen may not match what the FC is running, e.g. the diagram previewing
+  // a new frame), and here also until a reboot applies written changes.
+  const pendingCount = Object.keys(pending).length;
+  const testHold = pendingCount ? 'Configuration changes have been detected. Motor test is disabled until the settings have been written.'
+    : v.rebootNeeded ? 'Motor test is disabled until the FC is rebooted, so the last changes take effect.' : '';
+  const canSpin = !!(propsOff && v.connected && !v.armed && !v.rebooting && layout && !testHold);
 
-  // ---- motor test loop -------------------------------------------------
-  // ArduPilot's motor test runs for a timeout and stops on its own. We
-  // re-send a short (1 s) test twice a second while a motor should spin, so
-  // if the app freezes or the cable comes out, the motor stops within a second.
-  const stateRef = useRef();
-  stateRef.current = { canSpin, slider, wizard, wizardMotor, layout };
+  // ---- motor test ---------------------------------------------------------
+  // Like Betaflight: each motor has its own slider and several can spin at
+  // once; the master slider sets them all. ArduPilot's motor test runs for a
+  // timeout and stops on its own; useSpin re-sends a short (1 s) test twice a
+  // second, so if the app freezes or the cable comes out, motors stop within 1 s.
+  useSpin(v, () => {
+    if (!canSpin || !Object.values(vals).some((x) => x > 0)) return null;
+    return layout.motors.map((m) => ({ seq: m.testSeq, pct: vals[m.num] || 0 }));
+  }, setTestError);
+
+  // A slider left alone for SLIDER_IDLE_MS goes back to 0.
   useEffect(() => {
     const t = setInterval(() => {
-      const s = stateRef.current;
-      let want = null; // { seq, pct }
-      if (s.canSpin && s.wizardMotor && Date.now() - s.wizard.started < WIZARD_SPIN_MS) {
-        want = { seq: s.wizardMotor.testSeq, pct: WIZARD_PCT };
-      } else if (s.canSpin && !s.wizard && s.slider.value > 0 && s.slider.motor != null) {
-        if (Date.now() - lastInput.current > SLIDER_IDLE_MS) {
-          setSlider({ motor: null, value: 0 });
-        } else {
-          const m = s.layout.motors.find((x) => x.num === s.slider.motor);
-          want = { seq: m.testSeq, pct: s.slider.value };
-        }
-      }
-      if (want) {
-        running.current = want.seq;
-        v.motorTest(want.seq, want.pct, 1).then(() => setTestError(''), (e) => setTestError(e.message));
-      } else if (running.current != null) {
-        v.motorStop(running.current);
-        running.current = null;
+      if (Date.now() - lastInput.current > SLIDER_IDLE_MS) {
+        setVals((x) => (Object.values(x).some((y) => y > 0) ? {} : x));
+        setMaster((x) => (x ? 0 : x));
       }
     }, 500);
-    return () => {
-      clearInterval(t);
-      if (running.current != null) v.motorStop(running.current);
-    };
-  }, [v]);
+    return () => clearInterval(t);
+  }, []);
 
-  useEffect(() => { if (!canSpin) { setSlider({ motor: null, value: 0 }); setMaster(0); } }, [canSpin]);
+  useEffect(() => { if (!canSpin) { setVals({}); setMaster(0); } }, [canSpin]);
 
   function moveSlider(motor, val) {
     lastInput.current = Date.now();
-    setSlider({ motor: val > 0 ? motor : null, value: val });
+    setVals((x) => ({ ...x, [motor]: val }));
   }
 
-  function runMaster() {
-    if (!canSpin || master <= 0) return;
-    // motor count 4 = ArduPilot runs A, B, C, D one after another.
-    v.command(209, [1, 0, master, 2, 4, 0]).then(() => setTestError(''), (e) => setTestError(e.message));
+  function moveMaster(val) {
+    lastInput.current = Date.now();
+    setMaster(val);
+    setVals(Object.fromEntries(layout.motors.map((m) => [m.num, val])));
   }
 
   function stopAll() {
-    setSlider({ motor: null, value: 0 });
+    setVals({});
     setMaster(0);
-    if (wizard && !wizard.done) setWizard({ ...wizard, started: 0 });
-    v.motorStop(running.current || 1);
+    v.motorStop(1);
   }
 
-  // ---- wizards -----------------------------------------------------------
-  const structuralPending = Object.keys(pending).some((n) => /^(FRAME_|SERVO\d+_FUNCTION|SERVO_BLH_RVMASK)/.test(n));
-  const wizardBlocked = !layout ? 'This frame isn’t supported by the wizards yet.'
-    : structuralPending ? 'Write your changes first.'
-      : v.rebootNeeded ? 'Reboot the FC first so the last changes take effect.'
-        : !canSpin ? 'Confirm the props are off (below) to use the wizards.' : '';
-
-  function startDirection() {
-    const steps = [...layout.motors].sort((a, b) => a.testSeq - b.testSeq);
-    setWizard({ type: 'dir', steps, i: 0, answers: {}, started: Date.now() });
-  }
-  function startOrder() {
-    setWizard({ type: 'order', steps: [...layout.motors], i: 0, picks: {}, started: Date.now() });
-  }
-
-  function finishDirection(answers) {
-    const mask = directionMask(layout, params, answers);
-    const flipped = layout.motors.filter((m) => answers[m.num] === false).map((m) => m.num);
-    if (mask !== params.SERVO_BLH_RVMASK) stage('SERVO_BLH_RVMASK', mask, `Reverse motor ${flipped.join(', ')}`);
-    setWizard({ type: 'dir', done: true, flipped });
-  }
-
-  function finishOrder(picks) {
-    const res = orderChanges(layout, params, picks);
-    if (res.error) { setWizard({ type: 'order', done: true, error: res.error }); return; }
-    const posName = Object.fromEntries(layout.motors.map((m) => [m.num, m.posName]));
-    for (const [name, fn] of Object.entries(res.changes)) {
-      const out = name.match(/\d+/)[0];
-      const motor = fn - MOTOR_FUNCTION_BASE;
-      stage(name, fn, `Output ${out} drives the ${posName[motor]} motor (Motor ${motor})`);
-    }
-    setWizard({ type: 'order', done: true, count: Object.keys(res.changes).length });
-  }
-
-  function answerDirection(ok) {
-    const answers = { ...wizard.answers, [wizardMotor.num]: ok };
-    if (wizard.i + 1 >= wizard.steps.length) finishDirection(answers);
-    else setWizard({ ...wizard, answers, i: wizard.i + 1, started: Date.now() });
-  }
-
-  function clickMotorAt(posKey, motorNum) {
-    if (wizard && wizard.type === 'order' && !wizard.done) {
-      const picks = { ...wizard.picks, [wizardMotor.num]: posKey };
-      if (wizard.i + 1 >= wizard.steps.length) finishOrder(picks);
-      else setWizard({ ...wizard, picks, i: wizard.i + 1, started: Date.now() });
-      return;
-    }
-    setSel(motorNum);
-  }
+  // ---- Motor order / Motor direction (Betaflight's tools) ---------------
+  // Betaflight disables both while there are unsaved changes or motor test
+  // mode is on, and shows Motor direction only with a DShot protocol.
+  const isDshot = params.MOT_PWM_TYPE >= 4 && params.MOT_PWM_TYPE <= 7;
+  const toolsBlocked = !v.connected ? 'Connect first.'
+    : v.armed ? 'Disarm the FC first.'
+      : v.rebooting ? 'The FC is rebooting.'
+        : !layout ? 'This frame isn’t supported yet.'
+          : pendingCount ? 'Write your changes first.'
+            : v.rebootNeeded ? 'Reboot the FC first so the last changes take effect.'
+              : propsOff ? 'Turn off motor test (below) to use these.' : '';
 
   // ---- derived values for the screen ------------------------------------
   const motorMask = layout ? layout.motors.reduce((m, x) => {
@@ -184,8 +119,8 @@ export default function Motors({ stage, value, pending }) {
   const spinArm = pct('MOT_SPIN_ARM');
   const spinMin = pct('MOT_SPIN_MIN');
   const frameType = value('FRAME_TYPE');
-  const physical = v.physical;
-  const pickedPositions = wizard && wizard.type === 'order' && !wizard.done ? Object.values(wizard.picks) : [];
+  // Motors the app is commanding to spin right now (the picture animates these).
+  const commanded = canSpin ? Object.keys(vals).map(Number).filter((n) => vals[n] > 0) : [];
 
   const telem = (m) => {
     const o = outputForMotor(params, m.num);
@@ -236,90 +171,29 @@ export default function Motors({ stage, value, pending }) {
               <div className="row-text"><div className="row-label"><span>Show Betaflight motor numbers</span></div></div>
             </div>
 
-            {layout ? (
-              <div className="quad" aria-label="Frame diagram">
-                <svg width="300" height="280" viewBox="0 0 300 280" aria-hidden="true">
-                  <line x1="80" y1="70" x2="220" y2="210" stroke="#BDBDBD" strokeWidth="22" strokeLinecap="round" />
-                  <line x1="220" y1="70" x2="80" y2="210" stroke="#BDBDBD" strokeWidth="22" strokeLinecap="round" />
-                  <path d="M150 112 l-16 22 h10 v30 h12 v-30 h10 z" fill="#E5322D" />
-                </svg>
-                {layout.motors.map((m) => {
-                  const spinning = physical && physical.pos === m.pos;
-                  const active = sel === m.num || (wizardMotor && wizard.type === 'dir' && wizardMotor.num === m.num);
-                  const picked = pickedPositions.includes(m.pos);
-                  return (
-                    <button
-                      key={m.pos}
-                      type="button"
-                      className={`motor-btn ${active ? 'active' : ''} ${picked ? 'picked' : ''} ${wizard && wizard.type === 'order' && !wizard.done ? 'pickable' : ''}`}
-                      style={{ left: m.x - 34, top: m.y - 34 }}
-                      onClick={() => clickMotorAt(m.pos, m.num)}
-                      aria-label={wizard && wizard.type === 'order' && !wizard.done ? `The ${m.posName} motor is spinning` : `Motor ${m.num}, ${m.posName}, ${m.dir}`}
-                    >
-                      <span className="motor-num">{m.num}</span>
-                      {bfNums && <span className="motor-bf">BF {m.bf}</span>}
-                      <span className="motor-letter">{m.letter} · {m.dir}</span>
-                      <span className={`arc ${m.dir === 'CW' ? 'cw' : 'ccw'}`} />
-                      {spinning && <span className={`spin ${physical.dir === 'CW' ? 'cw' : 'ccw'}`} />}
-                    </button>
-                  );
-                })}
-              </div>
+            {v.isVirtual && shown && <VirtualDrone motors={shown.motors} physical={v.physical} />}
+            {shown ? (
+              <QuadDiagram
+                motors={shown.motors}
+                spinning={commanded}
+                bfNums={bfNums}
+                classFor={(m) => (sel === m.num ? 'active' : '')}
+                onClick={(m) => setSel(m.num)}
+              />
             ) : (
               <p className="note">This frame isn’t drawn yet. This version supports Quad X frames (FRAME_TYPE 1, 12, 18).</p>
             )}
+            {framePreview && shown && (
+              <p className="center small preview-note">Preview of your unsaved frame change. Write to FC and Reboot FC to use it.</p>
+            )}
             <p className="center muted small">ArduPilot numbers motors differently than Betaflight. Letters are the test order (A → D).</p>
             <div className="btns">
-              <button type="button" className="btn-yellow" onClick={startDirection} disabled={!!wizardBlocked || !!wizard}>Motor direction</button>
-              <button type="button" className="btn-yellow" onClick={startOrder} disabled={!!wizardBlocked || !!wizard}>Motor order</button>
-              {wizardBlocked && !wizard && <span className="muted small">{wizardBlocked}</span>}
+              {shown && <button type="button" className="btn-yellow" onClick={() => setDialog('order')} disabled={!!toolsBlocked}>Motor order</button>}
+              {isDshot && <button type="button" className="btn-yellow" onClick={() => setDialog('direction')} disabled={!!toolsBlocked}>Motor direction</button>}
+              {toolsBlocked && <span className="muted small">{toolsBlocked}</span>}
             </div>
+            {!isDshot && <p className="muted small">Motor direction needs a DSHOT ESC protocol (below).</p>}
           </Panel>
-
-          {wizard && (
-            <Panel title={wizard.type === 'dir' ? 'Motor direction' : 'Motor order'} tone="wizard">
-              {wizard.done ? (
-                <>
-                  {wizard.error ? <p className="big">{wizard.error}</p>
-                    : wizard.type === 'dir' ? (
-                      <p className="big">{wizard.flipped.length ? `Motor ${wizard.flipped.join(', ')} will be reversed.` : 'All motors spin the right way.'}</p>
-                    ) : (
-                      <p className="big">{wizard.count ? `${wizard.count} outputs will be remapped.` : 'All motors are in the right place.'}</p>
-                    )}
-                  {!wizard.error && (wizard.count || (wizard.flipped && wizard.flipped.length)) ? (
-                    <p>Click <b>Write to FC</b> at the bottom, then <b>Reboot FC</b>. Run the wizard again afterwards to confirm.{wizard.type === 'order' && ' Then run Motor direction.'}</p>
-                  ) : null}
-                  <div className="btns"><button type="button" className="btn-grey" onClick={() => setWizard(null)}>Close</button></div>
-                </>
-              ) : (
-                <>
-                  <div className="wiz-step">Step {wizard.i + 1} of {wizard.steps.length}</div>
-                  {wizard.type === 'dir' ? (
-                    <>
-                      <p className="big">Motor {wizardMotor.num} ({wizardMotor.posName}) should spin <span className="hl">{wizardMotor.dir === 'CW' ? 'clockwise' : 'counter-clockwise'}</span>.</p>
-                      <p>It’s spinning at {WIZARD_PCT}%. Look down from above, or hold a strip of tape to the bell.</p>
-                    </>
-                  ) : (
-                    <>
-                      <p className="big">Which motor is spinning? <span className="hl">Click it on the diagram.</span></p>
-                      <p>ArduPilot is spinning motor {wizardMotor.num} at {WIZARD_PCT}%.</p>
-                    </>
-                  )}
-                  {v.isVirtual && (
-                    <p className="virtual-note">Virtual bench: {physical ? `the ${POSITIONS.find((p) => p.key === physical.pos).name} motor is spinning ${physical.dir === 'CW' ? 'clockwise' : 'counter-clockwise'}.` : 'nothing is spinning. Click Spin again.'}</p>
-                  )}
-                  <div className="btns">
-                    {wizard.type === 'dir' && <>
-                      <button type="button" className="btn-yellow" onClick={() => answerDirection(true)}>Correct</button>
-                      <button type="button" className="btn-grey" onClick={() => answerDirection(false)}>Wrong way, reverse it</button>
-                    </>}
-                    <button type="button" className="btn-grey" onClick={() => setWizard({ ...wizard, started: Date.now() })}>Spin again</button>
-                    <button type="button" className="btn-grey" onClick={() => setWizard(null)}>Cancel</button>
-                  </div>
-                </>
-              )}
-            </Panel>
-          )}
 
           <Panel title="ESC/Motor Features">
             <Row label="ESC/Motor protocol" param={`MOT_PWM_TYPE ${value('MOT_PWM_TYPE')}`} help="proto" changed={pending.MOT_PWM_TYPE}>
@@ -340,16 +214,16 @@ export default function Motors({ stage, value, pending }) {
               </select>
             </Row>
             <Row label="Motor poles" param={`SERVO_BLH_POLES ${value('SERVO_BLH_POLES')}`} help="poles" changed={pending.SERVO_BLH_POLES}>
-              <NumField label="Motor poles" value={value('SERVO_BLH_POLES')} onCommit={(x) => stage('SERVO_BLH_POLES', Math.round(x), 'Motor poles')} />
+              <NumberInput label="Motor poles" min={1} value={value('SERVO_BLH_POLES')} onCommit={(x) => stage('SERVO_BLH_POLES', Math.round(x), 'Motor poles')} />
             </Row>
             <Row label="Motor Idle (%)" qual="on the ground, armed" param={`MOT_SPIN_ARM ${value('MOT_SPIN_ARM')?.toFixed(3)}`} note={spinArm > spinMin ? '⚠ higher than the in-flight idle' : 'fraction, not percent'} help="arm" up changed={pending.MOT_SPIN_ARM}>
-              <NumField label="Motor idle on the ground, percent" value={spinArm} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_ARM', Math.round(x * 10) / 1000, 'Idle on the ground')} />
+              <NumberInput label="Motor idle on the ground, percent" min={0} max={100} value={spinArm} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_ARM', Math.round(x * 10) / 1000, 'Idle on the ground')} />
             </Row>
             <Row label="Motor Idle (%)" qual="in flight" param={`MOT_SPIN_MIN ${value('MOT_SPIN_MIN')?.toFixed(3)}`} note="must be ≥ MOT_SPIN_ARM" help="min" up changed={pending.MOT_SPIN_MIN}>
-              <NumField label="Motor idle in flight, percent" value={spinMin} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_MIN', Math.round(x * 10) / 1000, 'Idle in flight')} />
+              <NumberInput label="Motor idle in flight, percent" min={0} max={100} value={spinMin} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_MIN', Math.round(x * 10) / 1000, 'Idle in flight')} />
             </Row>
             <Row kind="ap" label="Motor spin max" param={`MOT_SPIN_MAX ${value('MOT_SPIN_MAX')?.toFixed(3)}`} note="no Betaflight equivalent" help="max" up changed={pending.MOT_SPIN_MAX}>
-              <NumField label="Motor spin max, percent" value={pct('MOT_SPIN_MAX')} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_MAX', Math.round(x * 10) / 1000, 'Spin max')} />
+              <NumberInput label="Motor spin max, percent" min={0} max={100} value={pct('MOT_SPIN_MAX')} step={0.5} suffix="%" onCommit={(x) => stage('MOT_SPIN_MAX', Math.round(x * 10) / 1000, 'Spin max')} />
             </Row>
           </Panel>
         </div>
@@ -358,21 +232,25 @@ export default function Motors({ stage, value, pending }) {
         <div className="col">
           <RpmGraph v={v} layout={layout} params={params} />
 
+          {testHold && <p className="preview-note">{testHold}</p>}
           {layout && (
             <div className="sliders">
               {layout.motors.map((m) => {
                 const e = telem(m);
-                const val = slider.motor === m.num ? slider.value : 0;
+                const val = vals[m.num] || 0;
                 return (
                   <div key={m.num} className="slider-col">
                     <button type="button" className="slider-head" onClick={() => setSel(m.num)}>{m.num}{bfNums && <small> BF {m.bf}</small>}</button>
-                    <div className={`valbox ${sel === m.num ? 'sel' : ''} ${val > 0 ? 'live' : ''}`}>{val}%</div>
+                    <div
+                      className={`valbox ${sel === m.num ? 'sel' : ''}`}
+                      style={{ '--fill': `${(100 * val) / MAX_TEST_PCT}%`, '--fill-alpha': ((100 * val) / MAX_TEST_PCT * 0.009 + 0.1).toFixed(2) }}
+                    >{val}%</div>
                     <div className="stats">RPM: {e ? e.rpm : '—'}<br />Amps: {e ? e.current.toFixed(2) : '—'}<br />Temp: {e ? e.temp + '°C' : '—'}</div>
                     <input
                       className="vslider"
                       type="range" min="0" max={MAX_TEST_PCT} step="1"
                       value={val}
-                      disabled={!canSpin || !!wizard}
+                      disabled={!canSpin}
                       aria-label={`Motor ${m.num} throttle`}
                       onChange={(ev) => moveSlider(m.num, Number(ev.target.value))}
                     />
@@ -382,9 +260,9 @@ export default function Motors({ stage, value, pending }) {
               })}
               <div className="slider-col">
                 <div className="slider-head"><Help id="master" up /></div>
-                <div className="valbox">{master}%</div>
-                <div className="stats"><button type="button" className="btn-yellow small" onClick={runMaster} disabled={!canSpin || !master || !!wizard}>Run A→D</button></div>
-                <input className="vslider" type="range" min="0" max={MAX_TEST_PCT} step="1" value={master} disabled={!canSpin || !!wizard} aria-label="Master throttle" onChange={(e) => setMaster(Number(e.target.value))} />
+                <div className="valbox" style={{ '--fill': `${(100 * master) / MAX_TEST_PCT}%`, '--fill-alpha': ((100 * master) / MAX_TEST_PCT * 0.009 + 0.1).toFixed(2) }}>{master}%</div>
+                <div className="stats">All motors</div>
+                <input className="vslider master" type="range" min="0" max={MAX_TEST_PCT} step="1" value={master} disabled={!canSpin} aria-label="Master throttle" onChange={(e) => moveMaster(Number(e.target.value))} />
                 <div className="slider-val"><b>Master</b></div>
               </div>
             </div>
@@ -395,7 +273,7 @@ export default function Motors({ stage, value, pending }) {
             <div className="notice-warn">WARNING: Remove all propellers before testing motors.</div>
             <ul>
               <li>Throttle is capped at {MAX_TEST_PCT}%.</li>
-              <li>ArduPilot spins one motor at a time.</li>
+              <li>The master slider spins all motors together.</li>
               <li>A slider left alone for {SLIDER_IDLE_MS / 1000} s goes back to 0, and a motor stops within 1 s if the app or cable drops.</li>
               <li>The FC must be disarmed. Boards with a safety switch may need it pressed first.</li>
             </ul>
@@ -415,6 +293,9 @@ export default function Motors({ stage, value, pending }) {
           </div>
         </div>
       </div>
+
+      {dialog === 'order' && layout && <MotorOrderDialog v={v} layout={layout} params={params} onClose={() => setDialog(null)} />}
+      {dialog === 'direction' && layout && <MotorDirectionDialog v={v} layout={layout} params={params} onClose={() => setDialog(null)} />}
     </div>
   );
 }

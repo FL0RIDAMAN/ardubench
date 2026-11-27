@@ -20,7 +20,7 @@ export default function Welcome({ busy }) {
         <div className="panel">
           <h2>No hardware? Try Virtual mode</h2>
           <p>Pick <b>Virtual (no hardware)</b> and click Connect. You get a pretend ArduCopter quad that behaves like a real one on the bench.</p>
-          <p>It’s built with two mistakes to find: two motors plugged into the wrong outputs, and one motor spinning the wrong way. Fix them with the <b>Motor order</b> and <b>Motor direction</b> wizards on the Motors tab.</p>
+          <p>It starts as a correctly built QUAD X: every motor on the right output, spinning the right way. Change the frame and, just like a real quad, use <b>Motor order</b> and <b>Motor direction</b> on the Motors tab to match the motors to it.</p>
         </div>
       </div>
     </div>

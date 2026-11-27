@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node test/codec.test.mjs && node test/wizards.test.mjs && node test/vehicle.test.mjs",
+    "test": "node test/codec.test.mjs && node test/wizards.test.mjs && node test/vehicle.test.mjs && node test/bench.test.mjs",
     "gen-defs": "python3 scripts/gen_defs.py > src/mavlink/defs.js"
   },
   "dependencies": {

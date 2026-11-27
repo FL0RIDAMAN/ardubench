@@ -46,3 +46,29 @@ export function directionMask(layout, params, answers) {
   }
   return mask;
 }
+
+// Motor direction dialog.
+// Which motors are reversed now: { motorNumber: true/false }, read from the
+// SERVO_BLH_RVMASK bit of the output each motor is on.
+export function reversedMotors(layout, params) {
+  const mask = params.SERVO_BLH_RVMASK || 0;
+  const out = {};
+  for (const m of layout.motors) {
+    const o = outputForMotor(params, m.num);
+    out[m.num] = !!o && ((mask >> (o - 1)) & 1) === 1;
+  }
+  return out;
+}
+
+// The SERVO_BLH_RVMASK that reverses exactly the motors marked true in
+// `reversed` ({ motorNumber: true/false }). Bits of non-motor outputs are kept.
+export function maskWith(layout, params, reversed) {
+  let mask = params.SERVO_BLH_RVMASK || 0;
+  for (const m of layout.motors) {
+    const o = outputForMotor(params, m.num);
+    if (!o || reversed[m.num] === undefined) continue;
+    if (reversed[m.num]) mask |= 1 << (o - 1);
+    else mask &= ~(1 << (o - 1));
+  }
+  return mask;
+}

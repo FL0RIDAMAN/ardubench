@@ -1,5 +1,5 @@
 // Small building blocks shared by every screen.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HELP } from './help.js';
 
 export function Panel({ title, children, className = '', tone }) {
@@ -8,6 +8,78 @@ export function Panel({ title, children, className = '', tone }) {
       {title && <span className="panel-tag">{title}</span>}
       {children}
     </section>
+  );
+}
+
+// A number you can type or step, like Betaflight Configurator's number fields
+// (Nuxt UI InputNumber, orientation "vertical"): two yellow chevrons on the
+// right edge, each half the field's height. Typing applies on Enter or when
+// you leave the field; a chevron click (hold to repeat) or ↑/↓ applies at once.
+const decimalsOf = (n) => ((String(n).split('.')[1] || '').length);
+
+export function NumberInput({ value, onCommit, step = 1, min, max, suffix, label, width = 110, mono }) {
+  const [text, setText] = useState(String(value ?? ''));
+  const textRef = useRef(text);
+  textRef.current = text;
+  const repeat = useRef(null);
+  useEffect(() => setText(String(value ?? '')), [value]);
+  useEffect(() => () => clearTimeout(repeat.current), []);
+
+  const clamp = (x) => Math.min(max ?? Infinity, Math.max(min ?? -Infinity, x));
+  const commit = () => {
+    const x = Number(textRef.current);
+    if (textRef.current.trim() !== '' && Number.isFinite(x) && clamp(x) !== value) onCommit(clamp(x));
+    else setText(String(value ?? ''));
+  };
+  const stepBy = (dir) => {
+    const cur = Number(textRef.current);
+    const base = textRef.current.trim() !== '' && Number.isFinite(cur) ? cur : (value ?? 0);
+    const places = Math.max(decimalsOf(step), decimalsOf(base));
+    const next = clamp(Number((base + dir * step).toFixed(Math.min(places, 6))));
+    textRef.current = String(next);
+    setText(String(next));
+    if (next !== value) onCommit(next);
+  };
+  const startStep = (dir) => {
+    stepBy(dir);
+    const again = (ms) => { repeat.current = setTimeout(() => { stepBy(dir); again(70); }, ms); };
+    again(400);
+  };
+  const stopStep = () => clearTimeout(repeat.current);
+
+  const chevron = (d) => (
+    <svg viewBox="0 0 12 12" aria-hidden="true"><path d={d} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  );
+  return (
+    <span className={`numfield ${mono ? 'mono' : ''}`} style={{ width }}>
+      <input
+        aria-label={label}
+        type="text"
+        inputMode="decimal"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') e.currentTarget.blur();
+          else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); stepBy(e.key === 'ArrowUp' ? 1 : -1); }
+        }}
+      />
+      {suffix && <span className="suffix">{suffix}</span>}
+      <span className="steps">
+        {[[1, 'Increase', 'M3 7.5 6 4.5 9 7.5'], [-1, 'Decrease', 'M3 4.5 6 7.5 9 4.5']].map(([dir, word, d]) => (
+          <button
+            key={dir}
+            type="button"
+            tabIndex={-1}
+            aria-label={`${word} ${label}`}
+            onPointerDown={(e) => { e.preventDefault(); startStep(dir); }}
+            onPointerUp={stopStep}
+            onPointerLeave={stopStep}
+            onPointerCancel={stopStep}
+          >{chevron(d)}</button>
+        ))}
+      </span>
+    </span>
   );
 }
 
