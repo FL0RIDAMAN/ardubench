@@ -4,20 +4,28 @@ A setup app for ArduPilot quads, laid out like the Betaflight Configurator so
 Betaflight builders feel at home. It runs in Chrome or Edge and talks to the
 flight controller over USB.
 
+**Open it: https://fl0ridaman.github.io/ardubench/** (Chrome or Edge on a computer)
+
 **Milestone 1 (this version):** connect, read/write parameters, and a working
 Motors tab with motor test, a motor order wizard, a motor direction wizard,
 ESC telemetry, and Betaflight equivalents for every setting.
 
 ## Try it
 
+Open **https://fl0ridaman.github.io/ardubench/** in **Chrome or Edge**. Pick
+**Virtual (no hardware)** and click Connect to try it without a flight
+controller, or pick **USB** with an ArduPilot board plugged in.
+
+The site updates itself: every push to `main` runs the tests, then builds and
+publishes it (`.github/workflows/deploy.yml`). If a test fails, the site stays
+on the last good version.
+
+To run it on your own computer instead:
+
 ```
 npm install     # once: downloads the libraries listed in package.json
 npm run dev     # starts the app at http://localhost:5173
 ```
-
-Open that address in **Chrome or Edge**. Pick **Virtual (no hardware)** and click
-Connect to try it without a flight controller, or pick **USB** with an
-ArduPilot board plugged in.
 
 Other commands:
 
